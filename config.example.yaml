@@ -1,0 +1,39 @@
+device:
+  # Prefer path when you already know the exact event device.
+  path: null
+  name_contains: "USB Keyboard"
+  phys_contains: null
+
+behavior:
+  # Keep false while testing with your main full-size keyboard.
+  exclusive_grab: true 
+  trigger_on: "down"
+  repeat: false
+  debounce_ms: 250
+  command_timeout_sec: 30
+  run_async: false
+  restore_on_exit: true
+
+logging:
+  level: "INFO"
+
+commands:
+#  KEY_F12:
+#    name: "Safe Tune"
+#    command: "/home/pi/radio/safe_tune.py"
+#    shell: false
+
+  KEY_F12:
+    name: "Lower RF Power"
+    command: "rigctl -m 1042 -r /dev/ttyUSB0 -s 38400 set_level RFPOWER 0.20"
+    shell: true
+
+  KEY_F10:
+    name: "Restore RF Power"
+    command: "/home/pi/radio/restore_power.py"
+    shell: false
+
+  KEY_KPENTER:
+    name: "Test beep"
+    command: "echo 'KPENTER pressed'"
+    shell: true

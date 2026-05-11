@@ -1,0 +1,15 @@
+[Unit]
+Description=Radio Key Daemon
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+Group=input
+WorkingDirectory=/home/pi/radio-key-daemon
+ExecStart=/usr/bin/python3 -m radio_key_daemon --config /home/pi/radio-key-daemon/config.yaml
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

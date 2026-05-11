@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: scripts/test-keyscan /dev/input/eventX" >&2
+  exit 2
+fi
+
+uv run python -m radio_key_daemon --scan-keys --device "$1"
