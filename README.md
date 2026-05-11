@@ -4,6 +4,9 @@ Userspace keyboard daemon for Linux and Raspberry Pi. It reads a selected USB ke
 
 No kernel driver is required. Linux already exposes USB keyboards as `/dev/input/eventX`; this daemon reads those events from userspace.
 
+
+<img width="432" height="392" alt="image" src="https://github.com/user-attachments/assets/4d520fd7-2b48-43cd-b031-c1b809d41309" />
+
 ## Features
 
 - Select keyboard by `/dev/input/eventX`, device name substring, or physical path substring.
