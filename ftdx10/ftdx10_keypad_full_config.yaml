@@ -1,0 +1,167 @@
+device:
+  # Лучше заменить на точный path после:
+  # uv run python -m radio_key_daemon --list-devices
+  path: null
+  name_contains: "USB Keyboard"
+  phys_contains: null
+
+behavior:
+  exclusive_grab: true
+  trigger_on: "down"
+  repeat: false
+  debounce_ms: 250
+  command_timeout_sec: 5
+  run_async: false
+  restore_on_exit: true
+
+logging:
+  level: "INFO"
+
+# Перед запуском:
+#   sudo mkdir -p /home/pi/radio
+#   sudo cp ftdx10_cat.py /home/pi/radio/
+#   sudo chmod +x /home/pi/radio/ftdx10_cat.py
+#
+# Если CAT-порт не /dev/ttyUSB0, замени CAT_PORT ниже.
+# FTDX10 CAT обычно должен идти через Enhanced COM Port.
+
+commands:
+  # Диапазоны
+  KEY_KP1:
+    name: "Band 1.8 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 1.8"
+    shell: true
+
+  KEY_KP2:
+    name: "Band 3.5 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 3.5"
+    shell: true
+
+  KEY_KP3:
+    name: "Band 5 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 5"
+    shell: true
+
+  KEY_KP4:
+    name: "Band 7 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 7"
+    shell: true
+
+  KEY_KP5:
+    name: "Band 10 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 10"
+    shell: true
+
+  KEY_KP6:
+    name: "Band 14 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 14"
+    shell: true
+
+  KEY_KP7:
+    name: "Band 18 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 18"
+    shell: true
+
+  KEY_KP8:
+    name: "Band 21 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 21"
+    shell: true
+
+  KEY_KP9:
+    name: "Band 24.5 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 24.5"
+    shell: true
+
+  KEY_KP0:
+    name: "Band 28 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 28"
+    shell: true
+
+  KEY_KPENTER:
+    name: "Band 50 MHz"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 50"
+    shell: true
+
+  # Частота вверх/вниз
+  KEY_KPPLUS:
+    name: "Frequency Up"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py freq up"
+    shell: true
+
+  KEY_KPMINUS:
+    name: "Frequency Down"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py freq down"
+    shell: true
+
+  # Громкость AF gain
+  KEY_PAGEUP:
+    name: "Volume Up"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py vol up 8"
+    shell: true
+
+  KEY_PAGEDOWN:
+    name: "Volume Down"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py vol down 8"
+    shell: true
+
+  # Мощность
+  KEY_F1:
+    name: "Power 5 W"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py power 5"
+    shell: true
+
+  KEY_F2:
+    name: "Power 10 W"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py power 10"
+    shell: true
+
+  KEY_F3:
+    name: "Power 25 W"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py power 25"
+    shell: true
+
+  KEY_F4:
+    name: "Power 100 W"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py power 100"
+    shell: true
+
+  # Тюнер / шумодав / clarifier / статус
+  KEY_F5:
+    name: "Tuner ON"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py tuner on"
+    shell: true
+
+  KEY_F6:
+    name: "Tuner Tune"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py tuner tune"
+    shell: true
+
+  KEY_F7:
+    name: "Noise Blanker ON"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py nb on"
+    shell: true
+
+  KEY_F8:
+    name: "Noise Blanker OFF"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py nb off"
+    shell: true
+
+  KEY_F9:
+    name: "Clarifier Down"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py clar down"
+    shell: true
+
+  KEY_F10:
+    name: "Clarifier Clear"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py clar clear"
+    shell: true
+
+  KEY_F11:
+    name: "Clarifier Up"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py clar up"
+    shell: true
+
+  KEY_F12:
+    name: "Read Status"
+    command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py status"
+    shell: true
