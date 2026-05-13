@@ -1,5 +1,5 @@
 device:
-  # Лучше заменить на точный path после:
+  # It is better to replace this with the exact path after running:
   # uv run python -m radio_key_daemon --list-devices
   path: null
   name_contains: "USB Keyboard"
@@ -17,16 +17,16 @@ behavior:
 logging:
   level: "INFO"
 
-# Перед запуском:
+# Before running:
 #   sudo mkdir -p /home/pi/radio
 #   sudo cp ftdx10_cat.py /home/pi/radio/
 #   sudo chmod +x /home/pi/radio/ftdx10_cat.py
 #
-# Если CAT-порт не /dev/ttyUSB0, замени CAT_PORT ниже.
-# FTDX10 CAT обычно должен идти через Enhanced COM Port.
+# If the CAT port is not /dev/ttyUSB0, replace CAT_PORT below.
+# FTDX10 CAT should usually go through the Enhanced COM Port.
 
 commands:
-  # Диапазоны
+  # Bands
   KEY_KP1:
     name: "Band 1.8 MHz"
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 1.8"
@@ -82,7 +82,7 @@ commands:
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 50"
     shell: true
 
-  # Частота вверх/вниз
+  # Frequency up/down
   KEY_KPPLUS:
     name: "Frequency Up"
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py freq up"
@@ -93,7 +93,7 @@ commands:
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py freq down"
     shell: true
 
-  # Громкость AF gain
+  # AF gain volume
   KEY_PAGEUP:
     name: "Volume Up"
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py vol up 8"
@@ -104,7 +104,7 @@ commands:
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py vol down 8"
     shell: true
 
-  # Мощность
+  # Power
   KEY_F1:
     name: "Power 5 W"
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py power 5"
@@ -125,7 +125,7 @@ commands:
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py power 100"
     shell: true
 
-  # Тюнер / шумодав / clarifier / статус
+  # Tuner / noise blanker / clarifier / status
   KEY_F5:
     name: "Tuner ON"
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py tuner on"
