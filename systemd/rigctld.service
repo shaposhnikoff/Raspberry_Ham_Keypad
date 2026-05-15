@@ -6,10 +6,11 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-# Use a dedicated non-login account when possible; update User= for your system.
+# Set this to your local service account (for Raspberry Pi defaults, "pi" is common).
 User=pi
 Group=dialout
 EnvironmentFile=-/etc/default/rigctld
+# 1042 is a common Hamlib model ID for Yaesu FTDX10; change for your rig.
 Environment=RIGCTLD_MODEL=1042
 Environment=RIGCTLD_DEVICE=/dev/ttyUSB0
 Environment=RIGCTLD_BAUD=38400

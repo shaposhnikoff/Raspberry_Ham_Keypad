@@ -197,7 +197,7 @@ Optional: run Hamlib `rigctld` as a service too:
 sudo cp systemd/rigctld.service /etc/systemd/system/
 ```
 
-Edit `/etc/systemd/system/rigctld.service` for `User=` and optionally set rig values in `/etc/default/rigctld` (`RIGCTLD_MODEL`, `RIGCTLD_DEVICE`, `RIGCTLD_BAUD`, `RIGCTLD_BIND`, `RIGCTLD_PORT`) before starting it.
+Prefer a drop-in override for local `User=` changes (for example `/etc/systemd/system/rigctld.service.d/override.conf`) and optionally set rig values in `/etc/default/rigctld` (`RIGCTLD_MODEL`, `RIGCTLD_DEVICE`, `RIGCTLD_BAUD`, `RIGCTLD_BIND`, `RIGCTLD_PORT`) before starting it.
 
 ```bash
 sudo systemctl daemon-reload
