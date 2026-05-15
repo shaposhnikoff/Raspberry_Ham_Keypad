@@ -20,6 +20,13 @@ No kernel driver is required. Linux already exposes USB keyboards as `/dev/input
 
 ## Install
 
+On Raspberry Pi 4, install the `build-essential` meta package first:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential
+```
+
 Install `uv` first if it is not already available, then install the project dependencies:
 
 ```bash
