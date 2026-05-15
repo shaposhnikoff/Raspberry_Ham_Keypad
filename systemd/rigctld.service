@@ -1,16 +1,24 @@
 [Unit]
 Description=Hamlib rigctld daemon
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
-# Set User= to your Linux username if it is not "pi".
+# Use a dedicated non-login account when possible; update User= for your system.
 User=pi
 Group=dialout
+EnvironmentFile=-/etc/default/rigctld
+Environment=RIGCTLD_MODEL=1042
+Environment=RIGCTLD_DEVICE=/dev/ttyUSB0
+Environment=RIGCTLD_BAUD=38400
+Environment=RIGCTLD_BIND=127.0.0.1
+Environment=RIGCTLD_PORT=4532
 # -m rig model, -r serial device, -s baud, -T bind address, -t TCP port
-ExecStart=/usr/bin/rigctld -m 1042 -r /dev/ttyUSB0 -s 38400 -T 127.0.0.1 -t 4532
+ExecStart=/usr/bin/rigctld -m ${RIGCTLD_MODEL} -r ${RIGCTLD_DEVICE} -s ${RIGCTLD_BAUD} -T ${RIGCTLD_BIND} -t ${RIGCTLD_PORT}
 Restart=on-failure
-RestartSec=2
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
