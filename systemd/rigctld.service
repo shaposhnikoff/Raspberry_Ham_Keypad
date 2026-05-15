@@ -2,11 +2,12 @@
 Description=Hamlib rigctld daemon
 After=network.target
 StartLimitIntervalSec=60
-StartLimitBurst=5
+StartLimitBurst=3
 
 [Service]
 Type=simple
-# Set this to your local service account (for Raspberry Pi defaults, "pi" is common).
+# Override User= in /etc/systemd/system/rigctld.service.d/override.conf for your host.
+# For Raspberry Pi defaults, "pi" is common.
 User=pi
 Group=dialout
 EnvironmentFile=-/etc/default/rigctld
