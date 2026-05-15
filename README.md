@@ -182,7 +182,7 @@ Place custom rules under `/etc/udev/rules.d/`, then reload udev rules.
 
 ## Systemd
 
-Copy the service file:
+Copy the keypad service file:
 
 ```bash
 sudo cp systemd/radio-key-daemon.service /etc/systemd/system/
@@ -191,10 +191,22 @@ sudo systemctl enable radio-key-daemon
 sudo systemctl start radio-key-daemon
 ```
 
+Optional: run Hamlib `rigctld` as a service too:
+
+```bash
+sudo cp systemd/rigctld.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable rigctld
+sudo systemctl start rigctld
+```
+
+Edit `/etc/systemd/system/rigctld.service` to match your rig model, serial port, and baud rate before starting it.
+
 Check logs:
 
 ```bash
 journalctl -u radio-key-daemon -f
+journalctl -u rigctld -f
 ```
 
 If using `uv` in production instead of system Python, adjust `ExecStart` to the venv or `uv run` command you actually deploy.

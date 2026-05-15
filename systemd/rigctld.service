@@ -1,0 +1,14 @@
+[Unit]
+Description=Hamlib rigctld daemon
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=dialout
+ExecStart=/usr/bin/rigctld -m 1042 -r /dev/ttyUSB0 -s 38400 -T 127.0.0.1 -t 4532
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
