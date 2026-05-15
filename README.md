@@ -195,12 +195,15 @@ Optional: run Hamlib `rigctld` as a service too:
 
 ```bash
 sudo cp systemd/rigctld.service /etc/systemd/system/
+```
+
+Edit `/etc/systemd/system/rigctld.service` to match your rig model, serial port, and baud rate before starting it.
+
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable rigctld
 sudo systemctl start rigctld
 ```
-
-Edit `/etc/systemd/system/rigctld.service` to match your rig model, serial port, and baud rate before starting it.
 
 Check logs:
 

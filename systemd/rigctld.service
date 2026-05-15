@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 User=pi
 Group=dialout
+# -m rig model, -r serial device, -s baud, -T bind address, -t TCP port
 ExecStart=/usr/bin/rigctld -m 1042 -r /dev/ttyUSB0 -s 38400 -T 127.0.0.1 -t 4532
 Restart=on-failure
 RestartSec=2
