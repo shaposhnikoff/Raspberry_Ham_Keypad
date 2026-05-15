@@ -1,0 +1,26 @@
+[Unit]
+Description=Hamlib rigctld daemon
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+# Override User= in /etc/systemd/system/rigctld.service.d/override.conf for your host.
+# For Raspberry Pi defaults, "pi" is common.
+User=pi
+Group=dialout
+EnvironmentFile=-/etc/default/rigctld
+# 1042 is a common Hamlib model ID for Yaesu FTDX10; change for your rig.
+Environment=RIGCTLD_MODEL=1042
+Environment=RIGCTLD_DEVICE=/dev/ttyUSB0
+Environment=RIGCTLD_BAUD=38400
+Environment=RIGCTLD_BIND=127.0.0.1
+Environment=RIGCTLD_PORT=4532
+# -m rig model, -r serial device, -s baud, -T bind address, -t TCP port
+ExecStart=/usr/bin/rigctld -m ${RIGCTLD_MODEL} -r ${RIGCTLD_DEVICE} -s ${RIGCTLD_BAUD} -T ${RIGCTLD_BIND} -t ${RIGCTLD_PORT}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
