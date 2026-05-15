@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
+# Set User= to your Linux username if it is not "pi".
 User=pi
 Group=dialout
 # -m rig model, -r serial device, -s baud, -T bind address, -t TCP port
