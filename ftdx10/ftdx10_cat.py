@@ -23,11 +23,9 @@ import argparse
 import os
 import re
 import select
-import sys
 import termios
 import time
 from dataclasses import dataclass
-
 
 BAUDS = {
     4800: termios.B4800,
@@ -70,19 +68,21 @@ class CatPort:
     baud: int
     timeout: float = 0.6
 
-    def __enter__(self) -> "CatPort":
+    def __enter__(self) -> CatPort:
         if self.baud not in BAUDS:
-            raise SystemExit(f"Unsupported baud {self.baud}; use one of {sorted(BAUDS)}")
+            raise SystemExit(
+                f"Unsupported baud {self.baud}; use one of {sorted(BAUDS)}"
+            )
 
         self.fd = os.open(self.path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
 
         attrs = termios.tcgetattr(self.fd)
-        attrs[0] = 0                         # iflag: raw input
-        attrs[1] = 0                         # oflag: raw output
+        attrs[0] = 0  # iflag: raw input
+        attrs[1] = 0  # oflag: raw output
         attrs[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
-        attrs[3] = 0                         # lflag: raw local
-        attrs[4] = BAUDS[self.baud]          # ispeed
-        attrs[5] = BAUDS[self.baud]          # ospeed
+        attrs[3] = 0  # lflag: raw local
+        attrs[4] = BAUDS[self.baud]  # ispeed
+        attrs[5] = BAUDS[self.baud]  # ospeed
         attrs[6][termios.VMIN] = 0
         attrs[6][termios.VTIME] = 0
 
@@ -146,7 +146,9 @@ def parse_first_int(pattern: str, text: str, label: str) -> int:
 def cmd_band(cat: CatPort, value: str) -> None:
     key = value.strip().lower()
     if key not in BANDS:
-        raise SystemExit(f"Unknown band {value!r}; valid keys: {', '.join(sorted(BANDS))}")
+        raise SystemExit(
+            f"Unknown band {value!r}; valid keys: {', '.join(sorted(BANDS))}"
+        )
     code = BANDS[key]
     cat.write(f"BS{code};")
     print(f"band={value} cat=BS{code};")
@@ -210,7 +212,8 @@ def cmd_raw(cat: CatPort, command: str, read: bool) -> None:
 
 def cmd_status(cat: CatPort) -> None:
     # FA = VFO-A frequency, AG0 = AF gain, PC = power, IF = operating info.
-    # Some answers may be empty if the port/radio is not ready; print whatever is returned.
+    # Some answers may be empty if the port/radio is not ready; print whatever
+    # is returned.
     for command in ("FA;", "AG0;", "PC;", "IF;"):
         answer = cat.query(command)
         print(f"{command} {answer.strip()}")
@@ -219,13 +222,20 @@ def cmd_status(cat: CatPort) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="FTDX10 CAT helper")
     parser.add_argument("--port", default=os.environ.get("CAT_PORT", "/dev/ttyUSB0"))
-    parser.add_argument("--baud", type=int, default=int(os.environ.get("CAT_BAUD", "38400")))
-    parser.add_argument("--timeout", type=float, default=float(os.environ.get("CAT_TIMEOUT", "0.6")))
+    parser.add_argument(
+        "--baud", type=int, default=int(os.environ.get("CAT_BAUD", "38400"))
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=float(os.environ.get("CAT_TIMEOUT", "0.6"))
+    )
 
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("band")
-    p.add_argument("value", help="1.8, 3.5, 5, 7, 10, 14, 18, 21, 24.5, 28, 50, gen, mw")
+    p.add_argument(
+        "value",
+        help="1.8, 3.5, 5, 7, 10, 14, 18, 21, 24.5, 28, 50, gen, mw",
+    )
 
     p = sub.add_parser("freq")
     p.add_argument("direction", choices=["up", "down"])
@@ -249,7 +259,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("raw")
     p.add_argument("cat_command")
-    p.add_argument("--read", action="store_true", help="read and print answer until ';'")
+    p.add_argument(
+        "--read", action="store_true", help="read and print answer until ';'"
+    )
 
     sub.add_parser("status")
 

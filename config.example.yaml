@@ -6,7 +6,7 @@ device:
 
 behavior:
   # Keep false while testing with your main full-size keyboard.
-  exclusive_grab: true 
+  exclusive_grab: true
   trigger_on: "down"
   repeat: false
   debounce_ms: 250
