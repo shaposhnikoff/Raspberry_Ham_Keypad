@@ -152,6 +152,15 @@ uv run python -m radio_key_daemon --config ./config.yaml --dry-run
 
 Dry-run mode logs what would execute and does not start commands.
 
+Show the current key bindings without opening the input device:
+
+```bash
+uv run python -m radio_key_daemon --config ./config.yaml --show-bindings
+```
+
+This parses the same YAML config as the daemon and prints an ASCII keyboard
+layout plus a command summary table.
+
 ## Exclusive Grab
 
 `exclusive_grab` prevents the selected keyboard from sending key presses to the rest of the system:

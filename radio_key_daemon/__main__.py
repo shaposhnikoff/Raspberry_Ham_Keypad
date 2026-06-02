@@ -7,6 +7,7 @@ import sys
 from evdev import InputDevice, categorize, ecodes
 
 from radio_key_daemon.actions import ActionRunner
+from radio_key_daemon.bindings_visualizer import render_bindings
 from radio_key_daemon.config import ConfigError, load_config
 from radio_key_daemon.daemon import RadioKeyDaemon
 from radio_key_daemon.devices import (
@@ -33,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run", action="store_true", help="Log commands without running"
     )
+    parser.add_argument(
+        "--show-bindings",
+        action="store_true",
+        help="Print configured key bindings and exit",
+    )
     return parser
 
 
@@ -45,9 +51,20 @@ def main(argv: list[str] | None = None) -> int:
             print("--scan-keys requires --device /dev/input/eventX", file=sys.stderr)
             return 2
         return _scan_keys(args.device)
+    if args.show_bindings:
+        if not args.config:
+            print("--show-bindings requires --config", file=sys.stderr)
+            return 2
+        try:
+            print(render_bindings(load_config(args.config)))
+        except ConfigError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        return 0
     if not args.config:
         print(
-            "--config is required unless using --list-devices or --scan-keys",
+            "--config is required unless using --list-devices, --scan-keys, "
+            "or --show-bindings",
             file=sys.stderr,
         )
         return 2
