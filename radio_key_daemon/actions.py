@@ -33,9 +33,7 @@ class ActionRunner:
     def run(self, command: CommandConfig) -> int | None:
         timeout = command.timeout or self._behavior.command_timeout_sec
         run_async = (
-            self._behavior.run_async
-            if command.run_async is None
-            else command.run_async
+            self._behavior.run_async if command.run_async is None else command.run_async
         )
         args = build_subprocess_args(command)
         label = command.name or command.key
@@ -46,7 +44,8 @@ class ActionRunner:
             if run_async:
                 process = subprocess.Popen(  # noqa: S603
                     args.args,
-                    shell=args.shell,
+                    # shell=True is enabled only when trusted YAML opts in.
+                    shell=args.shell,  # nosec B602
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -55,7 +54,8 @@ class ActionRunner:
                 return None
             completed = subprocess.run(  # noqa: S603
                 args.args,
-                shell=args.shell,
+                # shell=True is enabled only when trusted YAML opts in.
+                shell=args.shell,  # nosec B602
                 capture_output=True,
                 text=True,
                 timeout=timeout,
