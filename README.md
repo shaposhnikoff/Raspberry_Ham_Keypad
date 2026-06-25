@@ -16,6 +16,7 @@ No kernel driver is required. Linux already exposes USB keyboards as `/dev/input
 - Optional async command execution per command or globally.
 - Per-key debounce and repeat filtering.
 - Dry-run mode for testing.
+- Read-only local web interface for inspecting config, devices, and bindings.
 - Systemd service example for Raspberry Pi.
 
 ## Install
@@ -160,6 +161,23 @@ uv run python -m radio_key_daemon --config ./config.yaml --show-bindings
 
 This parses the same YAML config as the daemon and prints an ASCII keyboard
 layout plus a command summary table.
+
+Start the read-only web interface:
+
+```bash
+uv run python -m radio_key_daemon --config ./config.yaml --web
+```
+
+Open `http://127.0.0.1:8765/` on the same machine. The web interface shows
+the parsed config, command bindings, and available input devices. It does not
+edit YAML, execute commands, or control systemd services.
+
+By default the server binds only to `127.0.0.1`. To expose it on a LAN, choose
+the address explicitly and treat the page as operational station tooling:
+
+```bash
+uv run python -m radio_key_daemon --config ./config.yaml --web --host 0.0.0.0 --port 8765
+```
 
 ## Exclusive Grab
 
