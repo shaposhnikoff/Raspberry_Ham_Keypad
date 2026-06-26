@@ -31,6 +31,13 @@ flowchart TD
     AtomicWrite --> ReloadConfig[Reload in-memory config]
     ReloadConfig --> SaveOk[Return save success JSON]
 
+    PostRoute -->|/api/commands/run| RunAllowed{Command run enabled}
+    RunAllowed -->|No| RunForbidden[Return 403]
+    RunAllowed -->|Yes| FindCommand{Saved key exists}
+    FindCommand -->|No| RunNotFound[Return 404]
+    FindCommand -->|Yes| RunCommand[Run saved command with ActionRunner]
+    RunCommand --> RunResult[Return command result JSON]
+
     PostRoute -->|/api/systemd/restart| RestartAllowed{Restart enabled}
     RestartAllowed -->|No| RestartForbidden[Return 403]
     RestartAllowed -->|Yes| RestartService[Run systemctl restart service]

@@ -60,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Allow the web interface to restart the systemd service",
     )
     parser.add_argument(
+        "--allow-command-run",
+        action="store_true",
+        help="Allow the web interface to run configured commands",
+    )
+    parser.add_argument(
         "--service-name",
         default="radio-key-daemon.service",
         help="Systemd service name for --allow-service-restart",
@@ -100,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
                 port=args.port,
                 allow_service_restart=args.allow_service_restart,
                 service_name=args.service_name,
+                allow_command_run=args.allow_command_run,
             )
         except (ConfigError, OSError) as exc:
             logger.error("%s", exc)

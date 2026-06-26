@@ -194,6 +194,18 @@ uv run python -m radio_key_daemon --config ./config.yaml --web --allow-service-r
 
 Use `--service-name` if your systemd unit has a different name.
 
+By default the web UI will not run configured commands. To enable the per-key
+`Run` buttons, start it explicitly:
+
+```bash
+uv run python -m radio_key_daemon --config ./config.yaml --web --allow-command-run
+```
+
+The run API accepts only configured key names, such as `KEY_KP1`, and executes
+the saved YAML command for that key. It does not accept arbitrary shell command
+text from the browser. If you bind the web server to `0.0.0.0`, treat this as
+remote operational control of the station.
+
 ## Exclusive Grab
 
 `exclusive_grab` prevents the selected keyboard from sending key presses to the rest of the system:

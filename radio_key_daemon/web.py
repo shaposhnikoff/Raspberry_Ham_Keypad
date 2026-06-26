@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 import yaml
 
 from radio_key_daemon import __version__
+from radio_key_daemon.actions import ActionRunner
 from radio_key_daemon.bindings_visualizer import render_bindings
 from radio_key_daemon.config import (
     AppConfig,
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 DeviceLister = Callable[[], list[DeviceInfo]]
 ServiceRunner = Callable[[list[str]], subprocess.CompletedProcess[str]]
+CommandRunner = Callable[[CommandConfig], int | None]
 
 
 class WebApp:
@@ -45,6 +47,8 @@ class WebApp:
         allow_service_restart: bool = False,
         service_name: str = "radio-key-daemon.service",
         service_runner: ServiceRunner | None = None,
+        allow_command_run: bool = False,
+        command_runner: CommandRunner | None = None,
     ) -> None:
         self.config = config
         self.config_path = config_path
@@ -52,6 +56,8 @@ class WebApp:
         self.allow_service_restart = allow_service_restart
         self.service_name = service_name
         self.service_runner = service_runner or run_systemctl
+        self.allow_command_run = allow_command_run
+        self.command_runner = command_runner
         self.csrf_token = secrets.token_urlsafe(32)
         self._lock = threading.RLock()
 
@@ -94,6 +100,9 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/config/commands":
             self._save_commands(payload)
+            return
+        if path == "/api/commands/run":
+            self._run_command(payload)
             return
         if path == "/api/systemd/restart":
             self._restart_service()
@@ -180,6 +189,23 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
         status = HTTPStatus.OK if result["ok"] else HTTPStatus.INTERNAL_SERVER_ERROR
         self._send_json(result, status=status)
 
+    def _run_command(self, payload: dict[str, object]) -> None:
+        if not self.app.allow_command_run:
+            self._send_json(
+                {"error": "Command run is disabled"},
+                status=HTTPStatus.FORBIDDEN,
+            )
+            return
+        try:
+            result = run_configured_command(self.app, payload.get("key"))
+        except KeyError as exc:
+            self._send_json({"error": str(exc.args[0])}, status=HTTPStatus.NOT_FOUND)
+            return
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        self._send_json(result)
+
 
 def make_handler(app: WebApp) -> type[RadioKeyWebHandler]:
     class BoundRadioKeyWebHandler(RadioKeyWebHandler):
@@ -199,6 +225,8 @@ def run_web_server(
     allow_service_restart: bool = False,
     service_name: str = "radio-key-daemon.service",
     service_runner: ServiceRunner | None = None,
+    allow_command_run: bool = False,
+    command_runner: CommandRunner | None = None,
 ) -> None:
     app = WebApp(
         config,
@@ -207,6 +235,8 @@ def run_web_server(
         allow_service_restart=allow_service_restart,
         service_name=service_name,
         service_runner=service_runner,
+        allow_command_run=allow_command_run,
+        command_runner=command_runner,
     )
     server = ThreadingHTTPServer((host, port), make_handler(app))
     logger.info("Serving web UI at http://%s:%s/", host, port)
@@ -231,6 +261,7 @@ def status_payload(app: WebApp) -> dict[str, object]:
         "csrf_token": app.csrf_token,
         "allow_service_restart": app.allow_service_restart,
         "service_name": app.service_name,
+        "allow_command_run": app.allow_command_run,
     }
 
 
@@ -397,6 +428,23 @@ def restart_service(app: WebApp) -> dict[str, object]:
         "returncode": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
+    }
+
+
+def run_configured_command(app: WebApp, key_payload: object) -> dict[str, object]:
+    key = require_string(key_payload, "key")
+    with app._lock:
+        command = app.config.commands.get(key)
+        if command is None:
+            raise KeyError(f"No command configured for {key}")
+        runner = app.command_runner or ActionRunner(app.config.behavior).run
+        returncode = runner(command)
+    return {
+        "ok": returncode in (0, None),
+        "key": command.key,
+        "name": command.name or command.key,
+        "started": returncode is None,
+        "returncode": returncode,
     }
 
 
@@ -576,6 +624,11 @@ def render_dashboard(app: WebApp) -> str:
       color: #ffffff;
     }}
     button.danger {{ color: #9b1c1c; }}
+    button.run-button {{
+      min-height: 28px;
+      padding: 3px 7px;
+      white-space: nowrap;
+    }}
     button:disabled {{
       color: var(--muted);
       cursor: not-allowed;
@@ -642,7 +695,7 @@ def render_dashboard(app: WebApp) -> str:
         </button>
       </div>
       <div id="message" class="message"></div>
-      {render_commands_editor(config["commands"])}
+      {render_commands_editor(config["commands"], app.allow_command_run)}
     </section>
     <section>
       <h2>Available Input Devices</h2>
@@ -665,6 +718,18 @@ def render_dashboard(app: WebApp) -> str:
             value="${{escapeAttr(command.key || "")}}"
             placeholder="KEY_F12"
           >
+        </td>
+        <td>
+          <button
+            type="button"
+            class="run-button"
+            data-key=""
+            onclick="runBinding(this)"
+            disabled
+            title="Save this binding before running it"
+          >
+            Run
+          </button>
         </td>
         <td>
           <input
@@ -774,6 +839,33 @@ def render_dashboard(app: WebApp) -> str:
       setMessage("Service restarted.", "success");
     }}
 
+    async function runBinding(button) {{
+      const key = button.dataset.key;
+      if (!key) {{
+        setMessage("Save this binding before running it.", "error");
+        return;
+      }}
+      const previousText = button.textContent;
+      button.disabled = true;
+      button.textContent = "...";
+      setMessage(`Running ${{key}}...`, "");
+      const result = await postJson("/api/commands/run", {{key}});
+      button.disabled = false;
+      button.textContent = previousText;
+      if (!result.ok || !result.body.ok) {{
+        setMessage(result.body.error || `Command failed for ${{key}}`, "error");
+        return;
+      }}
+      if (result.body.started) {{
+        setMessage(`Started ${{result.body.name}}.`, "success");
+        return;
+      }}
+      setMessage(
+        `Finished ${{result.body.name}} with exit code ${{result.body.returncode}}.`,
+        "success",
+      );
+    }}
+
     async function postJson(url, payload) {{
       const response = await fetch(url, {{
         method: "POST",
@@ -844,25 +936,28 @@ def render_commands_table(commands: object) -> str:
     )
 
 
-def render_commands_editor(commands: object) -> str:
+def render_commands_editor(commands: object, allow_command_run: bool) -> str:
     if not isinstance(commands, list):
         commands = []
     rows = "\n".join(
-        render_command_editor_row(command)
+        render_command_editor_row(command, allow_command_run)
         for command in commands
         if isinstance(command, dict)
     )
     return (
         "<table><thead><tr>"
-        "<th>Key</th><th>Name</th><th>Command</th><th>Shell</th>"
+        "<th>Key</th><th>Run</th><th>Name</th><th>Command</th><th>Shell</th>"
         "<th>Timeout</th><th>Async</th><th>Debounce</th><th></th>"
         "</tr></thead><tbody id=\"commands-body\">"
         f"{rows}</tbody></table>"
     )
 
 
-def render_command_editor_row(command: dict[str, object]) -> str:
+def render_command_editor_row(
+    command: dict[str, object], allow_command_run: bool
+) -> str:
     key = attr(command.get("key"))
+    run_key = attr(command.get("key"))
     name = attr(command.get("name"))
     command_value = attr(command.get("command"))
     timeout = attr(command.get("timeout"))
@@ -876,11 +971,22 @@ def render_command_editor_row(command: dict[str, object]) -> str:
     async_inherit = "selected" if run_async is None else ""
     async_false = "selected" if run_async is False else ""
     async_true = "selected" if run_async is True else ""
+    run_disabled = "" if allow_command_run else "disabled"
+    run_title = (
+        "Run saved command"
+        if allow_command_run
+        else "Start web UI with --allow-command-run to enable"
+    )
     return (
         "<tr>"
         "<td>"
         f"<input name=\"key\" value=\"{key}\" "
         "placeholder=\"KEY_F12\">"
+        "</td>"
+        "<td>"
+        f"<button type=\"button\" class=\"run-button\" data-key=\"{run_key}\" "
+        f"onclick=\"runBinding(this)\" {run_disabled} "
+        f"title=\"{escape(run_title)}\">Run</button>"
         "</td>"
         "<td>"
         f"<input name=\"name\" value=\"{name}\" "

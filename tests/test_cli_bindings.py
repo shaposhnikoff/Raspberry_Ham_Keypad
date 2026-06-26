@@ -68,9 +68,18 @@ def test_web_loads_config_and_starts_server(tmp_path, monkeypatch):
         port,
         allow_service_restart,
         service_name,
+        allow_command_run,
     ):
         calls.append(
-            (config, config_path, host, port, allow_service_restart, service_name)
+            (
+                config,
+                config_path,
+                host,
+                port,
+                allow_service_restart,
+                service_name,
+                allow_command_run,
+            )
         )
 
     monkeypatch.setattr(cli, "run_web_server", fake_run_web_server)
@@ -85,6 +94,7 @@ def test_web_loads_config_and_starts_server(tmp_path, monkeypatch):
             "--port",
             "9000",
             "--allow-service-restart",
+            "--allow-command-run",
             "--service-name",
             "radio-key-daemon.service",
         ]
@@ -97,3 +107,4 @@ def test_web_loads_config_and_starts_server(tmp_path, monkeypatch):
     assert calls[0][3] == 9000
     assert calls[0][4] is True
     assert calls[0][5] == "radio-key-daemon.service"
+    assert calls[0][6] is True

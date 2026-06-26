@@ -26,6 +26,22 @@ def test_dashboard_returns_configured_commands(tmp_path):
     assert "text/html" in content_type
     assert "Safe Tune" in body
     assert "KEY_F12" in body
+    assert "<th>Key</th><th>Run</th><th>Name</th>" in body
+
+
+def test_dashboard_disables_run_buttons_by_default(tmp_path):
+    app = WebApp(
+        _load_sample_config(tmp_path),
+        config_path=str(tmp_path / "config.yaml"),
+        device_lister=_fake_devices,
+    )
+
+    status, _content_type, body = _get(app, "/")
+
+    assert status == 200
+    assert 'data-key="KEY_F12"' in body
+    assert "--allow-command-run" in body
+    assert "disabled" in body
 
 
 def test_status_api_returns_json(tmp_path):
@@ -310,6 +326,154 @@ def test_restart_service_invokes_configured_service(tmp_path):
     assert status == 200
     assert payload["ok"] is True
     assert calls == [["systemctl", "restart", "radio-key-daemon.service"]]
+
+
+def test_run_command_requires_opt_in(tmp_path):
+    config_file = _write_sample_config(tmp_path)
+    app = WebApp(
+        load_config(config_file),
+        config_path=str(config_file),
+        device_lister=_fake_devices,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/commands/run",
+        {"key": "KEY_F12"},
+    )
+
+    payload = json.loads(body)
+    assert status == 403
+    assert payload["error"] == "Command run is disabled"
+
+
+def test_run_command_rejects_missing_csrf(tmp_path):
+    config_file = _write_sample_config(tmp_path)
+    app = WebApp(
+        load_config(config_file),
+        config_path=str(config_file),
+        device_lister=_fake_devices,
+        allow_command_run=True,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/commands/run",
+        {"key": "KEY_F12"},
+        csrf_token="wrong",
+    )
+
+    payload = json.loads(body)
+    assert status == 403
+    assert payload["error"] == "Invalid CSRF token"
+
+
+def test_run_command_returns_404_for_unknown_key(tmp_path):
+    config_file = _write_sample_config(tmp_path)
+    app = WebApp(
+        load_config(config_file),
+        config_path=str(config_file),
+        device_lister=_fake_devices,
+        allow_command_run=True,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/commands/run",
+        {"key": "KEY_F11"},
+    )
+
+    payload = json.loads(body)
+    assert status == 404
+    assert payload["error"] == "No command configured for KEY_F11"
+
+
+def test_run_command_invokes_saved_command(tmp_path):
+    config_file = _write_sample_config(tmp_path)
+    calls = []
+
+    def fake_command_runner(command):
+        calls.append(command)
+        return 0
+
+    app = WebApp(
+        load_config(config_file),
+        config_path=str(config_file),
+        device_lister=_fake_devices,
+        allow_command_run=True,
+        command_runner=fake_command_runner,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/commands/run",
+        {"key": "KEY_F12"},
+    )
+
+    payload = json.loads(body)
+    assert status == 200
+    assert payload == {
+        "key": "KEY_F12",
+        "name": "Safe Tune",
+        "ok": True,
+        "returncode": 0,
+        "started": False,
+    }
+    assert calls[0].key == "KEY_F12"
+    assert calls[0].command == "/home/pi/radio/safe_tune.py"
+
+
+def test_run_command_reports_failure_return_code(tmp_path):
+    config_file = _write_sample_config(tmp_path)
+
+    def fake_command_runner(_command):
+        return 127
+
+    app = WebApp(
+        load_config(config_file),
+        config_path=str(config_file),
+        device_lister=_fake_devices,
+        allow_command_run=True,
+        command_runner=fake_command_runner,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/commands/run",
+        {"key": "KEY_F12"},
+    )
+
+    payload = json.loads(body)
+    assert status == 200
+    assert payload["ok"] is False
+    assert payload["returncode"] == 127
+
+
+def test_run_command_reports_async_started(tmp_path):
+    config_file = _write_sample_config(tmp_path)
+
+    def fake_command_runner(_command):
+        return None
+
+    app = WebApp(
+        load_config(config_file),
+        config_path=str(config_file),
+        device_lister=_fake_devices,
+        allow_command_run=True,
+        command_runner=fake_command_runner,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/commands/run",
+        {"key": "KEY_F12"},
+    )
+
+    payload = json.loads(body)
+    assert status == 200
+    assert payload["ok"] is True
+    assert payload["started"] is True
+    assert payload["returncode"] is None
 
 
 def _load_sample_config(tmp_path):
