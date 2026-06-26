@@ -5,7 +5,7 @@ import signal
 import threading
 
 from radio_key_daemon.actions import ActionRunner
-from radio_key_daemon.config import AppConfig
+from radio_key_daemon.config import ConfigState
 from radio_key_daemon.keys import Debouncer, event_matches_trigger, normalize_key_code
 
 logger = logging.getLogger(__name__)
@@ -21,15 +21,16 @@ except ImportError:  # pragma: no cover
 class RadioKeyDaemon:
     def __init__(
         self,
-        config: AppConfig,
+        config_state: ConfigState,
         device: InputDevice,
         runner: ActionRunner,
     ) -> None:
-        self._config = config
+        self._config_state = config_state
         self._device = device
         self._runner = runner
         self._stop_event = threading.Event()
         self._grabbed = False
+        config = config_state.get()
         self._debouncer = Debouncer(config.behavior.debounce_ms)
 
     def request_stop(self, signum: int | None = None) -> None:
@@ -58,7 +59,7 @@ class RadioKeyDaemon:
             self._device.close()
 
     def _grab_if_configured(self) -> None:
-        if not self._config.behavior.exclusive_grab:
+        if not self._config_state.get().behavior.exclusive_grab:
             return
         try:
             self._device.grab()
@@ -80,17 +81,18 @@ class RadioKeyDaemon:
 
     def _handle_event(self, event: object) -> None:
         _require_evdev()
+        config = self._config_state.get()
         if getattr(event, "type", None) != ecodes.EV_KEY:
             return
         key_event = categorize(event)
         if not event_matches_trigger(
             key_event.keystate,
-            self._config.behavior.trigger_on,
-            self._config.behavior.repeat,
+            config.behavior.trigger_on,
+            config.behavior.repeat,
         ):
             return
         key_code = normalize_key_code(key_event.keycode)
-        command = self._config.commands.get(key_code)
+        command = config.commands.get(key_code)
         if command is None:
             logger.debug("No command configured for %s", key_code)
             return

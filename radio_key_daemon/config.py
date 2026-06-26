@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,20 @@ class AppConfig:
     behavior: BehaviorConfig = field(default_factory=BehaviorConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     commands: dict[str, CommandConfig] = field(default_factory=dict)
+
+
+class ConfigState:
+    def __init__(self, config: AppConfig) -> None:
+        self._config = config
+        self._lock = threading.RLock()
+
+    def get(self) -> AppConfig:
+        with self._lock:
+            return self._config
+
+    def set(self, config: AppConfig) -> None:
+        with self._lock:
+            self._config = config
 
 
 def load_config(path: str | Path) -> AppConfig:

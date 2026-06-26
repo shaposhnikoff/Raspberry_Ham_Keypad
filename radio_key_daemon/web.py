@@ -11,7 +11,7 @@ import tempfile
 import threading
 from collections import deque
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -27,6 +27,7 @@ from radio_key_daemon.config import (
     AppConfig,
     CommandConfig,
     ConfigError,
+    ConfigState,
     load_config,
     parse_config,
 )
@@ -98,9 +99,10 @@ class ActivityLogHandler(logging.Handler):
 class WebApp:
     def __init__(
         self,
-        config: AppConfig,
+        config: AppConfig | None = None,
         *,
         config_path: str,
+        config_state: ConfigState | None = None,
         device_lister: DeviceLister = list_input_devices,
         allow_service_restart: bool = False,
         service_name: str = "radio-key-daemon.service",
@@ -108,7 +110,11 @@ class WebApp:
         allow_command_run: bool = False,
         command_runner: CommandRunner | None = None,
     ) -> None:
-        self.config = config
+        if config_state is None:
+            if config is None:
+                raise ValueError("config or config_state is required")
+            config_state = ConfigState(config)
+        self.config_state = config_state
         self.config_path = config_path
         self.device_lister = device_lister
         self.allow_service_restart = allow_service_restart
@@ -120,6 +126,10 @@ class WebApp:
         self.activity_log = ActivityLogBuffer()
         self._lock = threading.RLock()
         self.activity_log.append("INFO", f"Loaded config {config_path}")
+
+    @property
+    def config(self) -> AppConfig:
+        return self.config_state.get()
 
 
 class RadioKeyWebHandler(BaseHTTPRequestHandler):
@@ -281,6 +291,50 @@ def make_handler(app: WebApp) -> type[RadioKeyWebHandler]:
     return BoundRadioKeyWebHandler
 
 
+@dataclass
+class WebServerHandle:
+    app: WebApp
+    server: ThreadingHTTPServer
+    thread: threading.Thread
+
+    def shutdown(self) -> None:
+        self.server.shutdown()
+        self.thread.join(timeout=5)
+        self.server.server_close()
+
+
+def start_web_server(
+    config: AppConfig,
+    *,
+    config_path: str,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    config_state: ConfigState | None = None,
+    device_lister: DeviceLister = list_input_devices,
+    allow_service_restart: bool = False,
+    service_name: str = "radio-key-daemon.service",
+    service_runner: ServiceRunner | None = None,
+    allow_command_run: bool = False,
+    command_runner: CommandRunner | None = None,
+) -> WebServerHandle:
+    app = WebApp(
+        config,
+        config_path=config_path,
+        config_state=config_state,
+        device_lister=device_lister,
+        allow_service_restart=allow_service_restart,
+        service_name=service_name,
+        service_runner=service_runner,
+        allow_command_run=allow_command_run,
+        command_runner=command_runner,
+    )
+    server = ThreadingHTTPServer((host, port), make_handler(app))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    logger.info("Serving web UI at http://%s:%s/", host, port)
+    return WebServerHandle(app=app, server=server, thread=thread)
+
+
 def run_web_server(
     config: AppConfig,
     *,
@@ -294,7 +348,7 @@ def run_web_server(
     allow_command_run: bool = False,
     command_runner: CommandRunner | None = None,
 ) -> None:
-    app = WebApp(
+    handle = start_web_server(
         config,
         config_path=config_path,
         device_lister=device_lister,
@@ -303,15 +357,15 @@ def run_web_server(
         service_runner=service_runner,
         allow_command_run=allow_command_run,
         command_runner=command_runner,
+        host=host,
+        port=port,
     )
-    server = ThreadingHTTPServer((host, port), make_handler(app))
-    logger.info("Serving web UI at http://%s:%s/", host, port)
     try:
-        server.serve_forever()
+        handle.thread.join()
     except KeyboardInterrupt:
         logger.info("Web UI shutdown requested")
     finally:
-        server.server_close()
+        handle.shutdown()
 
 
 def status_payload(app: WebApp) -> dict[str, object]:
@@ -390,7 +444,7 @@ def save_commands(app: WebApp, commands_payload: object) -> dict[str, object]:
         backup_path = config_path.with_name(f"{config_path.name}.bak")
         shutil.copy2(config_path, backup_path)
         write_yaml_atomic(config_path, raw_config)
-        app.config = load_config(config_path)
+        app.config_state.set(load_config(config_path))
         app.activity_log.append(
             "INFO",
             f"Saved bindings. Backup: {backup_path}",

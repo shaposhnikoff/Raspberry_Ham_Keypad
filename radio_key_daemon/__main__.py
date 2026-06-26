@@ -6,7 +6,7 @@ import sys
 
 from radio_key_daemon.actions import ActionRunner
 from radio_key_daemon.bindings_visualizer import render_bindings
-from radio_key_daemon.config import ConfigError, load_config
+from radio_key_daemon.config import ConfigError, ConfigState, load_config
 from radio_key_daemon.daemon import RadioKeyDaemon
 from radio_key_daemon.devices import (
     DeviceSelectionError,
@@ -15,7 +15,7 @@ from radio_key_daemon.devices import (
 )
 from radio_key_daemon.keys import normalize_key_code
 from radio_key_daemon.logging_setup import setup_logging
-from radio_key_daemon.web import run_web_server
+from radio_key_daemon.web import run_web_server, start_web_server
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--web",
         action="store_true",
-        help="Start the web interface",
+        help="Start the web interface alongside the keypad daemon",
+    )
+    parser.add_argument(
+        "--web-only",
+        action="store_true",
+        help="Start only the web interface without reading an input device",
     )
     parser.add_argument(
         "--host",
@@ -91,9 +96,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 1
         return 0
-    if args.web:
+    if args.web and args.web_only:
+        print("--web and --web-only cannot be used together", file=sys.stderr)
+        return 2
+    if args.web and not args.config:
+        print("--web requires --config", file=sys.stderr)
+        return 2
+    if args.web_only:
         if not args.config:
-            print("--web requires --config", file=sys.stderr)
+            print("--web-only requires --config", file=sys.stderr)
             return 2
         try:
             config = load_config(args.config)
@@ -115,18 +126,37 @@ def main(argv: list[str] | None = None) -> int:
     if not args.config:
         print(
             "--config is required unless using --list-devices, --scan-keys, "
-            "or --show-bindings",
+            "--show-bindings, or --web-only",
             file=sys.stderr,
         )
         return 2
+    web_handle = None
     try:
         config = load_config(args.config)
         setup_logging(config.logging.level)
-        device = open_selected_device(config.device)
+        config_state = ConfigState(config)
         runner = ActionRunner(config.behavior, dry_run=args.dry_run)
-        daemon = RadioKeyDaemon(config, device, runner)
+        if args.web:
+            web_handle = start_web_server(
+                config,
+                config_path=args.config,
+                config_state=config_state,
+                host=args.host,
+                port=args.port,
+                allow_service_restart=args.allow_service_restart,
+                service_name=args.service_name,
+                allow_command_run=args.allow_command_run,
+                command_runner=runner.run,
+            )
+        device = open_selected_device(config.device)
+        daemon = RadioKeyDaemon(config_state, device, runner)
         daemon.install_signal_handlers()
-        daemon.run()
+        try:
+            daemon.run()
+        finally:
+            if web_handle is not None:
+                web_handle.shutdown()
+                web_handle = None
     except (
         ConfigError,
         DeviceSelectionError,
@@ -134,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
         OSError,
         RuntimeError,
     ) as exc:
+        if web_handle is not None:
+            web_handle.shutdown()
         logger.error("%s", exc)
         print(f"error: {exc}", file=sys.stderr)
         return 1

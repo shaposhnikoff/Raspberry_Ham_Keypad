@@ -8,7 +8,7 @@ from http.server import ThreadingHTTPServer
 
 import yaml
 
-from radio_key_daemon.config import load_config
+from radio_key_daemon.config import ConfigState, load_config
 from radio_key_daemon.devices import DeviceInfo
 from radio_key_daemon.web import WebApp, devices_payload, make_handler
 
@@ -187,8 +187,9 @@ def test_unknown_route_returns_404(tmp_path):
 
 def test_save_commands_rewrites_only_commands_and_creates_backup(tmp_path):
     config_file = _write_sample_config(tmp_path)
+    config_state = ConfigState(load_config(config_file))
     app = WebApp(
-        load_config(config_file),
+        config_state=config_state,
         config_path=str(config_file),
         device_lister=_fake_devices,
     )
@@ -230,6 +231,7 @@ def test_save_commands_rewrites_only_commands_and_creates_backup(tmp_path):
         }
     }
     assert app.config.commands["KEY_F10"].name == "Restore Power"
+    assert config_state.get().commands["KEY_F10"].name == "Restore Power"
 
 
 def test_save_commands_accepts_json_argv_array(tmp_path):

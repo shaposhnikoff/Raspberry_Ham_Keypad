@@ -162,21 +162,26 @@ uv run python -m radio_key_daemon --config ./config.yaml --show-bindings
 This parses the same YAML config as the daemon and prints an ASCII keyboard
 layout plus a command summary table.
 
-Start the web interface:
+Start the web interface alongside the keypad daemon:
 
 ```bash
 uv run python -m radio_key_daemon --config ./config.yaml --web
 ```
 
-Open `http://127.0.0.1:8765/` on the same machine. The web interface shows
-the parsed config, command bindings, and available input devices. It can edit
-only the `commands` key bindings section of the YAML file. Device, behavior,
-and logging settings stay read-only in the web UI.
+Open `http://127.0.0.1:8765/` on the same machine. In this mode the HTTP server
+runs in a background thread while the main thread keeps reading the selected
+`evdev` input device. Key presses from the physical keypad continue to execute
+commands.
+
+The web interface shows the parsed config, command bindings, and available
+input devices. It can edit only the `commands` key bindings section of the YAML
+file. Device, behavior, and logging settings stay read-only in the web UI.
 
 Before saving changes, the server validates the new bindings with the same
 config parser used by the daemon. On a successful save it writes a rolling
 backup next to the config file, for example `config.yaml.bak`, then replaces
-the YAML file atomically. Existing YAML comments may not be preserved.
+the YAML file atomically and reloads the shared in-memory config used by the
+keypad loop. Existing YAML comments may not be preserved.
 
 The web page includes an Activity Log below the key bindings table. It shows
 recent web-session events such as binding saves, run requests, command
@@ -211,6 +216,12 @@ The run API accepts only configured key names, such as `KEY_KP1`, and executes
 the saved YAML command for that key. It does not accept arbitrary shell command
 text from the browser. If you bind the web server to `0.0.0.0`, treat this as
 remote operational control of the station.
+
+For config-only maintenance without opening an input device, use `--web-only`:
+
+```bash
+uv run python -m radio_key_daemon --config ./config.yaml --web-only
+```
 
 ## Exclusive Grab
 
@@ -266,8 +277,8 @@ run buttons enabled:
 ```
 
 Open `http://RASPBERRY_PI_ADDRESS:8765/` from your LAN. This service runs the
-web UI process; it does not also run the evdev keypad event loop in the same
-process.
+web UI and the evdev keypad event loop in the same process. The HTTP server runs
+in a background thread; the main thread remains the keypad reader.
 
 Optional: run Hamlib `rigctld` as a service too:
 
