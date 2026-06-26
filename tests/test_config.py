@@ -88,4 +88,7 @@ def test_loads_ftdx10_keypad_config_without_evdev():
     config = load_config("ftdx10/ftdx10_keypad_full_config.yaml")
 
     assert config.commands["KEY_KP1"].name == "Band 1.8 MHz"
+    assert config.commands["KEY_KPDOT"].name == "CW Beacon"
+    assert config.commands["KEY_KPDOT"].command == "/home/pi/radio/beacon.sh"
+    assert config.commands["KEY_KPDOT"].timeout == 60
     assert config.commands["KEY_KPPLUS"].name == "Frequency Up"

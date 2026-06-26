@@ -77,6 +77,12 @@ commands:
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 28"
     shell: true
 
+  KEY_KPDOT:
+    name: "CW Beacon"
+    command: "/home/pi/radio/beacon.sh"
+    shell: false
+    timeout: 60
+
   KEY_KPENTER:
     name: "Band 50 MHz"
     command: "CAT_PORT=/dev/ttyUSB0 CAT_BAUD=38400 /home/pi/radio/ftdx10_cat.py band 50"
