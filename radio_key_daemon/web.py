@@ -179,9 +179,7 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         logger.info("%s - %s", self.address_string(), format % args)
 
-    def _send_html(
-        self, body: str, *, status: HTTPStatus = HTTPStatus.OK
-    ) -> None:
+    def _send_html(self, body: str, *, status: HTTPStatus = HTTPStatus.OK) -> None:
         self._send_bytes(body.encode("utf-8"), "text/html; charset=utf-8", status)
 
     def _send_json(
@@ -190,14 +188,10 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
         body = json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
         self._send_bytes(body, "application/json; charset=utf-8", status)
 
-    def _send_text(
-        self, body: str, *, status: HTTPStatus = HTTPStatus.OK
-    ) -> None:
+    def _send_text(self, body: str, *, status: HTTPStatus = HTTPStatus.OK) -> None:
         self._send_bytes(body.encode("utf-8"), "text/plain; charset=utf-8", status)
 
-    def _send_bytes(
-        self, body: bytes, content_type: str, status: HTTPStatus
-    ) -> None:
+    def _send_bytes(self, body: bytes, content_type: str, status: HTTPStatus) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -1089,7 +1083,7 @@ def render_dashboard(app: WebApp) -> str:
 
 def render_key_value_table(values: object) -> str:
     if not isinstance(values, dict):
-        return "<p class=\"subtle\">No data</p>"
+        return '<p class="subtle">No data</p>'
     rows = "\n".join(
         f"<tr><th>{escape(str(key))}</th><td>{escape(str(value))}</td></tr>"
         for key, value in values.items()
@@ -1099,7 +1093,7 @@ def render_key_value_table(values: object) -> str:
 
 def render_commands_table(commands: object) -> str:
     if not isinstance(commands, list) or not commands:
-        return "<p class=\"subtle\">No commands configured</p>"
+        return '<p class="subtle">No commands configured</p>'
     rows = "\n".join(
         "<tr>"
         f"<td><code>{escape(str(command['key']))}</code></td>"
@@ -1134,7 +1128,7 @@ def render_commands_editor(commands: object, allow_command_run: bool) -> str:
         "<table><thead><tr>"
         "<th>Key</th><th>Run</th><th>Name</th><th>Command</th><th>Shell</th>"
         "<th>Timeout</th><th>Async</th><th>Debounce</th><th></th>"
-        "</tr></thead><tbody id=\"commands-body\">"
+        '</tr></thead><tbody id="commands-body">'
         f"{rows}</tbody></table>"
     )
 
@@ -1166,46 +1160,46 @@ def render_command_editor_row(
     return (
         "<tr>"
         "<td>"
-        f"<input name=\"key\" value=\"{key}\" "
-        "placeholder=\"KEY_F12\">"
+        f'<input name="key" value="{key}" '
+        'placeholder="KEY_F12">'
         "</td>"
         "<td>"
-        f"<button type=\"button\" class=\"run-button\" data-key=\"{run_key}\" "
-        f"onclick=\"runBinding(this)\" {run_disabled} "
-        f"title=\"{escape(run_title)}\">Run</button>"
+        f'<button type="button" class="run-button" data-key="{run_key}" '
+        f'onclick="runBinding(this)" {run_disabled} '
+        f'title="{escape(run_title)}">Run</button>'
         "</td>"
         "<td>"
-        f"<input name=\"name\" value=\"{name}\" "
-        "placeholder=\"Safe Tune\">"
+        f'<input name="name" value="{name}" '
+        'placeholder="Safe Tune">'
         "</td>"
         "<td>"
-        "<input class=\"command-input\" name=\"command\" "
-        f"value=\"{command_value}\" "
-        f"placeholder=\"{command_placeholder}\">"
+        '<input class="command-input" name="command" '
+        f'value="{command_value}" '
+        f'placeholder="{command_placeholder}">'
         "</td>"
         "<td>"
-        "<select name=\"shell\">"
-        f"<option value=\"false\" {shell_false}>false</option>"
-        f"<option value=\"true\" {shell_true}>true</option>"
+        '<select name="shell">'
+        f'<option value="false" {shell_false}>false</option>'
+        f'<option value="true" {shell_true}>true</option>'
         "</select>"
         "</td>"
         "<td>"
-        "<input name=\"timeout\" type=\"number\" min=\"1\" "
-        f"value=\"{timeout}\">"
+        '<input name="timeout" type="number" min="1" '
+        f'value="{timeout}">'
         "</td>"
         "<td>"
-        "<select name=\"run_async\">"
-        f"<option value=\"\" {async_inherit}>inherit</option>"
-        f"<option value=\"false\" {async_false}>false</option>"
-        f"<option value=\"true\" {async_true}>true</option>"
+        '<select name="run_async">'
+        f'<option value="" {async_inherit}>inherit</option>'
+        f'<option value="false" {async_false}>false</option>'
+        f'<option value="true" {async_true}>true</option>'
         "</select>"
         "</td>"
         "<td>"
-        "<input name=\"debounce_ms\" type=\"number\" min=\"0\" "
-        f"value=\"{debounce_ms}\">"
+        '<input name="debounce_ms" type="number" min="0" '
+        f'value="{debounce_ms}">'
         "</td>"
         "<td>"
-        "<button type=\"button\" class=\"danger\" "
+        '<button type="button" class="danger" '
         "onclick=\"this.closest('tr').remove()\">Delete</button>"
         "</td>"
         "</tr>"
@@ -1215,10 +1209,10 @@ def render_command_editor_row(
 def render_devices_table(payload: dict[str, object]) -> str:
     warning = payload.get("warning")
     if warning:
-        return f"<p class=\"warning\">{escape(str(warning))}</p>"
+        return f'<p class="warning">{escape(str(warning))}</p>'
     devices = payload.get("devices")
     if not isinstance(devices, list) or not devices:
-        return "<p class=\"subtle\">No input devices found</p>"
+        return '<p class="subtle">No input devices found</p>'
     rows = "\n".join(
         "<tr>"
         f"<td><code>{escape(str(device['path']))}</code></td>"
