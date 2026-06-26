@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 
 [[package]]
@@ -129,7 +129,7 @@ name = "radio-key-daemon"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "evdev" },
+    { name = "evdev", marker = "sys_platform == 'linux'" },
     { name = "pyyaml" },
 ]
 
@@ -141,7 +141,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "evdev", specifier = ">=1.7.1" },
+    { name = "evdev", marker = "sys_platform == 'linux'", specifier = ">=1.7.1" },
     { name = "pyyaml", specifier = ">=6.0.1" },
 ]
 

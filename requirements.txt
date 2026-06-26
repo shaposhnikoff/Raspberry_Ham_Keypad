@@ -1,2 +1,2 @@
-evdev>=1.7.1
+evdev>=1.7.1; sys_platform == "linux"
 PyYAML>=6.0.1
