@@ -1,0 +1,17 @@
+[Unit]
+Description=Hamlib rigctld daemon
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User={{ radio_key_daemon_user }}
+Group=dialout
+EnvironmentFile=-/etc/default/rigctld
+ExecStart=/usr/bin/rigctld -m ${RIGCTLD_MODEL} -r ${RIGCTLD_DEVICE} -s ${RIGCTLD_BAUD} -T ${RIGCTLD_BIND} -t ${RIGCTLD_PORT}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

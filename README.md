@@ -303,6 +303,15 @@ journalctl -u rigctld -f
 
 If using `uv` in production instead of system Python, adjust `ExecStart` to the venv or `uv run` command you actually deploy.
 
+## Ansible Deploy
+
+Ansible deployment files live in `ansible/`. Start with:
+
+```bash
+cp ansible/inventory.example.yml ansible/inventory.yml
+ansible-playbook -i ansible/inventory.yml ansible/deploy.yml --check --diff
+```
+
 ## Safe Tune Placeholder
 
 Example external script target:
