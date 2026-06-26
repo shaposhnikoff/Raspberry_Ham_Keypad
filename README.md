@@ -178,6 +178,12 @@ config parser used by the daemon. On a successful save it writes a rolling
 backup next to the config file, for example `config.yaml.bak`, then replaces
 the YAML file atomically. Existing YAML comments may not be preserved.
 
+The web page includes an Activity Log below the key bindings table. It shows
+recent web-session events such as binding saves, run requests, command
+stdout/stderr, exit codes, validation errors, and service restart results. The
+log is an in-memory ring buffer for the current web process; it is not a
+replacement for `journalctl`.
+
 By default the server binds only to `127.0.0.1`. To expose it on a LAN, choose
 the address explicitly and treat the page as operational station tooling:
 

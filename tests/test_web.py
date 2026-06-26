@@ -27,6 +27,8 @@ def test_dashboard_returns_configured_commands(tmp_path):
     assert "Safe Tune" in body
     assert "KEY_F12" in body
     assert "<th>Key</th><th>Run</th><th>Name</th>" in body
+    assert body.index("Key Bindings") < body.index("Activity Log")
+    assert body.index("Activity Log") < body.index("Available Input Devices")
 
 
 def test_dashboard_disables_run_buttons_by_default(tmp_path):
@@ -98,6 +100,57 @@ def test_bindings_api_returns_text(tmp_path):
     assert "text/plain" in content_type
     assert "Current key bindings" in body
     assert "[F12: Safe Tune]" in body
+
+
+def test_logs_api_returns_activity_entries(tmp_path):
+    app = WebApp(
+        _load_sample_config(tmp_path),
+        config_path=str(tmp_path / "config.yaml"),
+        device_lister=_fake_devices,
+    )
+
+    status, content_type, body = _get(app, "/api/logs")
+
+    payload = json.loads(body)
+    assert status == 200
+    assert "application/json" in content_type
+    assert payload["entries"][0]["level"] == "INFO"
+    assert "Loaded config" in payload["entries"][0]["message"]
+
+
+def test_clear_logs_clears_entries(tmp_path):
+    app = WebApp(
+        _load_sample_config(tmp_path),
+        config_path=str(tmp_path / "config.yaml"),
+        device_lister=_fake_devices,
+    )
+
+    status, _content_type, body = _post(app, "/api/logs/clear", {})
+
+    payload = json.loads(body)
+    assert status == 200
+    assert payload == {"ok": True, "entries": []}
+    assert app.activity_log.entries() == []
+
+
+def test_clear_logs_rejects_missing_csrf(tmp_path):
+    app = WebApp(
+        _load_sample_config(tmp_path),
+        config_path=str(tmp_path / "config.yaml"),
+        device_lister=_fake_devices,
+    )
+
+    status, _content_type, body = _post(
+        app,
+        "/api/logs/clear",
+        {},
+        csrf_token="wrong",
+    )
+
+    payload = json.loads(body)
+    assert status == 403
+    assert payload["error"] == "Invalid CSRF token"
+    assert app.activity_log.entries()
 
 
 def test_devices_payload_reports_listing_warning(tmp_path):
@@ -421,6 +474,9 @@ def test_run_command_invokes_saved_command(tmp_path):
     }
     assert calls[0].key == "KEY_F12"
     assert calls[0].command == "/home/pi/radio/safe_tune.py"
+    messages = [entry["message"] for entry in app.activity_log.entries()]
+    assert "Run requested for KEY_F12: Safe Tune" in messages
+    assert "Command KEY_F12 completed with exit 0" in messages
 
 
 def test_run_command_reports_failure_return_code(tmp_path):

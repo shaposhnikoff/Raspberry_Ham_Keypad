@@ -9,8 +9,10 @@ import shutil
 import subprocess
 import tempfile
 import threading
+from collections import deque
 from collections.abc import Callable
 from dataclasses import asdict
+from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -37,6 +39,62 @@ ServiceRunner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 CommandRunner = Callable[[CommandConfig], int | None]
 
 
+class ActivityLogBuffer:
+    def __init__(self, max_entries: int = 200) -> None:
+        self._entries: deque[dict[str, object]] = deque(maxlen=max_entries)
+        self._lock = threading.Lock()
+        self._next_id = 1
+
+    def append(
+        self,
+        level: str,
+        message: str,
+        *,
+        logger_name: str = "radio_key_daemon.web",
+        created: float | None = None,
+    ) -> None:
+        if created is None:
+            timestamp = datetime.now(UTC)
+        else:
+            timestamp = datetime.fromtimestamp(created, UTC)
+        with self._lock:
+            self._entries.append(
+                {
+                    "id": self._next_id,
+                    "timestamp": timestamp.isoformat(timespec="seconds"),
+                    "level": level.upper(),
+                    "logger": logger_name,
+                    "message": message,
+                }
+            )
+            self._next_id += 1
+
+    def entries(self) -> list[dict[str, object]]:
+        with self._lock:
+            return list(self._entries)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._entries.clear()
+
+
+class ActivityLogHandler(logging.Handler):
+    def __init__(self, buffer: ActivityLogBuffer) -> None:
+        super().__init__()
+        self._buffer = buffer
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self._buffer.append(
+                record.levelname,
+                record.getMessage(),
+                logger_name=record.name,
+                created=record.created,
+            )
+        except Exception:
+            self.handleError(record)
+
+
 class WebApp:
     def __init__(
         self,
@@ -59,7 +117,9 @@ class WebApp:
         self.allow_command_run = allow_command_run
         self.command_runner = command_runner
         self.csrf_token = secrets.token_urlsafe(32)
+        self.activity_log = ActivityLogBuffer()
         self._lock = threading.RLock()
+        self.activity_log.append("INFO", f"Loaded config {config_path}")
 
 
 class RadioKeyWebHandler(BaseHTTPRequestHandler):
@@ -82,6 +142,9 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/bindings":
             self._send_text(render_bindings(self.app.config))
+            return
+        if path == "/api/logs":
+            self._send_json(activity_log_payload(self.app))
             return
         self._send_text("Not found\n", status=HTTPStatus.NOT_FOUND)
 
@@ -106,6 +169,10 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/systemd/restart":
             self._restart_service()
+            return
+        if path == "/api/logs/clear":
+            self.app.activity_log.clear()
+            self._send_json({"ok": True, "entries": []})
             return
         self._send_text("Not found\n", status=HTTPStatus.NOT_FOUND)
 
@@ -165,12 +232,15 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
         try:
             result = save_commands(self.app, payload.get("commands"))
         except ValueError as exc:
+            self.app.activity_log.append("ERROR", f"Save rejected: {exc}")
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
         except ConfigError as exc:
+            self.app.activity_log.append("ERROR", f"Save rejected: {exc}")
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
         except OSError as exc:
+            self.app.activity_log.append("ERROR", f"Save failed: {exc}")
             self._send_json(
                 {"error": str(exc)},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -199,9 +269,11 @@ class RadioKeyWebHandler(BaseHTTPRequestHandler):
         try:
             result = run_configured_command(self.app, payload.get("key"))
         except KeyError as exc:
+            self.app.activity_log.append("ERROR", str(exc.args[0]))
             self._send_json({"error": str(exc.args[0])}, status=HTTPStatus.NOT_FOUND)
             return
         except ValueError as exc:
+            self.app.activity_log.append("ERROR", f"Run rejected: {exc}")
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
         self._send_json(result)
@@ -308,6 +380,10 @@ def devices_payload(app: WebApp) -> dict[str, object]:
     }
 
 
+def activity_log_payload(app: WebApp) -> dict[str, object]:
+    return {"entries": app.activity_log.entries()}
+
+
 def save_commands(app: WebApp, commands_payload: object) -> dict[str, object]:
     if not isinstance(commands_payload, list):
         raise ValueError("commands must be a list")
@@ -321,6 +397,10 @@ def save_commands(app: WebApp, commands_payload: object) -> dict[str, object]:
         shutil.copy2(config_path, backup_path)
         write_yaml_atomic(config_path, raw_config)
         app.config = load_config(config_path)
+        app.activity_log.append(
+            "INFO",
+            f"Saved bindings. Backup: {backup_path}",
+        )
     return {
         "ok": True,
         "backup_path": str(backup_path),
@@ -412,9 +492,11 @@ def write_yaml_atomic(path: Path, raw_config: dict[str, object]) -> None:
 
 
 def restart_service(app: WebApp) -> dict[str, object]:
+    app.activity_log.append("INFO", f"Restart requested for {app.service_name}")
     try:
         completed = app.service_runner(["systemctl", "restart", app.service_name])
     except OSError as exc:
+        app.activity_log.append("ERROR", f"Restart failed: {exc}")
         return {
             "ok": False,
             "service": app.service_name,
@@ -422,6 +504,13 @@ def restart_service(app: WebApp) -> dict[str, object]:
             "stdout": "",
             "stderr": str(exc),
         }
+    if completed.returncode == 0:
+        app.activity_log.append("INFO", f"Restarted {app.service_name}")
+    else:
+        app.activity_log.append(
+            "ERROR",
+            f"Restart failed for {app.service_name}: exit {completed.returncode}",
+        )
     return {
         "ok": completed.returncode == 0,
         "service": app.service_name,
@@ -437,8 +526,28 @@ def run_configured_command(app: WebApp, key_payload: object) -> dict[str, object
         command = app.config.commands.get(key)
         if command is None:
             raise KeyError(f"No command configured for {key}")
-        runner = app.command_runner or ActionRunner(app.config.behavior).run
-        returncode = runner(command)
+        app.activity_log.append(
+            "INFO",
+            f"Run requested for {command.key}: {command.name or command.key}",
+        )
+        if app.command_runner is None:
+            handler = ActivityLogHandler(app.activity_log)
+            action_logger = logging.getLogger("radio_key_daemon.actions")
+            action_logger.addHandler(handler)
+            try:
+                returncode = ActionRunner(app.config.behavior).run(command)
+            finally:
+                action_logger.removeHandler(handler)
+        else:
+            returncode = app.command_runner(command)
+    if returncode is None:
+        app.activity_log.append("INFO", f"Started async command for {command.key}")
+    elif returncode == 0:
+        app.activity_log.append("INFO", f"Command {command.key} completed with exit 0")
+    else:
+        app.activity_log.append(
+            "ERROR", f"Command {command.key} failed with exit {returncode}"
+        )
     return {
         "ok": returncode in (0, None),
         "key": command.key,
@@ -650,6 +759,30 @@ def render_dashboard(app: WebApp) -> str:
     }}
     .message.error {{ color: #9b1c1c; }}
     .message.success {{ color: var(--accent); }}
+    .log-panel {{
+      margin-top: 12px;
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #101418;
+      color: #eef3f8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.35;
+      padding: 10px;
+    }}
+    .log-row {{
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 7.5rem 4.5rem minmax(0, 1fr);
+      padding: 2px 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }}
+    .log-level-ERROR {{ color: #ffb4b4; }}
+    .log-level-WARNING {{ color: #ffd08a; }}
+    .log-level-INFO {{ color: #9ce3e8; }}
   </style>
 </head>
 <body>
@@ -696,6 +829,14 @@ def render_dashboard(app: WebApp) -> str:
       </div>
       <div id="message" class="message"></div>
       {render_commands_editor(config["commands"], app.allow_command_run)}
+    </section>
+    <section>
+      <h2>Activity Log</h2>
+      <div class="toolbar">
+        <button type="button" onclick="refreshLogs()">Refresh</button>
+        <button type="button" onclick="clearLogs()">Clear</button>
+      </div>
+      <div id="activity-log" class="log-panel"></div>
     </section>
     <section>
       <h2>Available Input Devices</h2>
@@ -825,6 +966,7 @@ def render_dashboard(app: WebApp) -> str:
         return;
       }}
       setMessage(`Saved. Backup: ${{result.body.backup_path}}`, "success");
+      refreshLogs();
       setTimeout(() => window.location.reload(), 700);
     }}
 
@@ -837,6 +979,7 @@ def render_dashboard(app: WebApp) -> str:
         return;
       }}
       setMessage("Service restarted.", "success");
+      refreshLogs();
     }}
 
     async function runBinding(button) {{
@@ -854,16 +997,56 @@ def render_dashboard(app: WebApp) -> str:
       button.textContent = previousText;
       if (!result.ok || !result.body.ok) {{
         setMessage(result.body.error || `Command failed for ${{key}}`, "error");
+        refreshLogs();
         return;
       }}
       if (result.body.started) {{
         setMessage(`Started ${{result.body.name}}.`, "success");
+        refreshLogs();
         return;
       }}
       setMessage(
         `Finished ${{result.body.name}} with exit code ${{result.body.returncode}}.`,
         "success",
       );
+      refreshLogs();
+    }}
+
+    async function refreshLogs() {{
+      const response = await fetch("/api/logs", {{cache: "no-store"}});
+      if (!response.ok) {{
+        return;
+      }}
+      const payload = await response.json();
+      renderLogs(payload.entries || []);
+    }}
+
+    async function clearLogs() {{
+      const result = await postJson("/api/logs/clear", {{}});
+      if (result.ok) {{
+        renderLogs([]);
+      }}
+    }}
+
+    function renderLogs(entries) {{
+      const panel = document.querySelector("#activity-log");
+      if (!entries.length) {{
+        panel.innerHTML = '<div class="subtle">No activity yet</div>';
+        return;
+      }}
+      panel.innerHTML = entries.map((entry) => {{
+        const timestamp = escapeAttr(String(entry.timestamp || ""));
+        const level = escapeAttr(String(entry.level || ""));
+        const message = escapeAttr(String(entry.message || ""));
+        return `
+          <div class="log-row log-level-${{level}}">
+            <span>${{timestamp}}</span>
+            <span>${{level}}</span>
+            <span>${{message}}</span>
+          </div>
+        `;
+      }}).join("");
+      panel.scrollTop = panel.scrollHeight;
     }}
 
     async function postJson(url, payload) {{
@@ -895,6 +1078,9 @@ def render_dashboard(app: WebApp) -> str:
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
     }}
+
+    refreshLogs();
+    setInterval(refreshLogs, 2000);
   </script>
 </body>
 </html>

@@ -14,6 +14,7 @@ flowchart TD
     Route -->|/api/status| Status[Return status JSON]
     Route -->|/api/config| Config[Return normalized config JSON]
     Route -->|/api/devices| Devices[List input devices]
+    Route -->|/api/logs| Logs[Return activity log JSON]
     Devices --> DeviceOk{Device listing works}
     DeviceOk -->|Yes| DeviceJson[Return devices JSON]
     DeviceOk -->|No| DeviceWarning[Return warning JSON]
@@ -36,11 +37,13 @@ flowchart TD
     RunAllowed -->|Yes| FindCommand{Saved key exists}
     FindCommand -->|No| RunNotFound[Return 404]
     FindCommand -->|Yes| RunCommand[Run saved command with ActionRunner]
+    RunCommand --> LogRun[Append stdout stderr and result to activity log]
     RunCommand --> RunResult[Return command result JSON]
 
     PostRoute -->|/api/systemd/restart| RestartAllowed{Restart enabled}
     RestartAllowed -->|No| RestartForbidden[Return 403]
     RestartAllowed -->|Yes| RestartService[Run systemctl restart service]
     RestartService --> RestartResult[Return restart result JSON]
+    PostRoute -->|/api/logs/clear| ClearLogs[Clear activity log]
     PostRoute -->|Other| PostNotFound[Return 404]
 ```
