@@ -4,13 +4,18 @@ import logging
 import signal
 import threading
 
-from evdev import InputDevice, categorize, ecodes
-
 from radio_key_daemon.actions import ActionRunner
 from radio_key_daemon.config import AppConfig
 from radio_key_daemon.keys import Debouncer, event_matches_trigger, normalize_key_code
 
 logger = logging.getLogger(__name__)
+
+try:  # pragma: no cover - depends on Linux input headers at install time
+    from evdev import InputDevice, categorize, ecodes
+except ImportError:  # pragma: no cover
+    InputDevice = None  # type: ignore[assignment]
+    categorize = None  # type: ignore[assignment]
+    ecodes = None  # type: ignore[assignment]
 
 
 class RadioKeyDaemon:
@@ -74,6 +79,7 @@ class RadioKeyDaemon:
                 self._grabbed = False
 
     def _handle_event(self, event: object) -> None:
+        _require_evdev()
         if getattr(event, "type", None) != ecodes.EV_KEY:
             return
         key_event = categorize(event)
@@ -93,3 +99,8 @@ class RadioKeyDaemon:
             return
         logger.info("Triggering command for %s", key_code)
         self._runner.run(command)
+
+
+def _require_evdev() -> None:
+    if InputDevice is None or categorize is None or ecodes is None:
+        raise RuntimeError("evdev is required to read Linux input devices")

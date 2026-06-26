@@ -20,6 +20,7 @@ this is the Enhanced COM Port exposed as `/dev/ttyUSB0` or `/dev/ttyUSB1`.
 ## Files
 
 - `ftdx10_cat.py` - standalone CAT helper.
+- `beacon.sh` - CW beacon helper that calls `rigctl`/`rigctld`.
 - `ftdx10_keypad_full_config.yaml` - example `radio_key_daemon` keypad mapping
   that calls `ftdx10_cat.py`.
 
@@ -30,7 +31,9 @@ Copy the helper to a stable local path:
 ```bash
 sudo mkdir -p /home/pi/radio
 sudo cp ftdx10/ftdx10_cat.py /home/pi/radio/
+sudo cp ftdx10/beacon.sh /home/pi/radio/
 sudo chmod +x /home/pi/radio/ftdx10_cat.py
+sudo chmod +x /home/pi/radio/beacon.sh
 ```
 
 If you use another user or directory, update all paths in the keypad YAML.
@@ -206,6 +209,39 @@ The script clamps the requested value to `5..100` before sending `PCnnn;`.
 Use `tuner tune` intentionally. It asks the radio tuner to start a tuning
 operation.
 
+## CW Beacon
+
+`beacon.sh` starts a short CW beacon through `rigctl`. The example keypad config
+maps `KEY_KPDOT` to `/home/pi/radio/beacon.sh`, so the same action can be
+started from the keypad or from the web UI command button when the web server is
+started with `--allow-command-run`.
+
+Default beacon settings:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RIGCTL_MODEL` | `2` | Hamlib NET rigctl model. |
+| `RIGCTL_ENDPOINT` | `192.168.10.36:4532` | `rigctld` host and port. |
+| `CALLSIGN` | `UT3UDX` | Callsign used in the CW message. |
+| `FREQ` | `14025000` | Frequency in Hz. |
+| `REPEAT` | `1` | Number of beacon rounds. |
+| `PAUSE` | `5` | Pause in seconds after each CW message. |
+| `RFPOWER` | `0.05` | Hamlib RFPOWER level. |
+| `CW_FILTER` | `500` | CW mode filter width. |
+| `MESSAGE` | `CQ CQ CQ DE ... K` | Full CW message sent by `rigctl b`. |
+
+Run it manually before assigning it to a live keypad:
+
+```bash
+/home/pi/radio/beacon.sh
+```
+
+Override settings with environment variables:
+
+```bash
+RIGCTL_ENDPOINT=192.168.10.36:4532 CALLSIGN=UT3UDX FREQ=14025000 /home/pi/radio/beacon.sh
+```
+
 ## Raw CAT Commands
 
 Send a CAT command without reading a response:
@@ -301,6 +337,7 @@ uv run python -m radio_key_daemon --config config.ftdx10.yaml
 | `KEY_KP8` | Band 21 MHz |
 | `KEY_KP9` | Band 24.5 MHz |
 | `KEY_KP0` | Band 28 MHz |
+| `KEY_KPDOT` | CW Beacon |
 | `KEY_KPENTER` | Band 50 MHz |
 | `KEY_KPPLUS` | Frequency up |
 | `KEY_KPMINUS` | Frequency down |

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from radio_key_daemon.config import DeviceConfig
 
-try:
+try:  # pragma: no cover - depends on Linux input headers at install time
     from evdev import InputDevice, ecodes, list_devices
-except ImportError as exc:  # pragma: no cover
-    raise RuntimeError("evdev is required to access Linux input devices") from exc
+except ImportError:  # pragma: no cover
+    InputDevice = None  # type: ignore[assignment]
+    ecodes = None  # type: ignore[assignment]
+    list_devices = None  # type: ignore[assignment]
 
 
 class DeviceSelectionError(Exception):
@@ -25,6 +28,7 @@ class DeviceInfo:
 
 
 def list_input_devices() -> list[DeviceInfo]:
+    _require_evdev()
     devices: list[DeviceInfo] = []
     for path in list_devices():
         device = InputDevice(path)
@@ -33,7 +37,8 @@ def list_input_devices() -> list[DeviceInfo]:
     return devices
 
 
-def device_info(device: InputDevice) -> DeviceInfo:
+def device_info(device: Any) -> DeviceInfo:
+    _require_evdev()
     capabilities = device.capabilities(verbose=True)
     key_codes = set(device.capabilities().get(ecodes.EV_KEY, []))
     is_keyboard_like = ecodes.KEY_A in key_codes and ecodes.KEY_ENTER in key_codes
@@ -47,7 +52,8 @@ def device_info(device: InputDevice) -> DeviceInfo:
     )
 
 
-def open_selected_device(config: DeviceConfig) -> InputDevice:
+def open_selected_device(config: DeviceConfig) -> Any:
+    _require_evdev()
     if config.path:
         return InputDevice(config.path)
     matches = _matching_devices(config)
@@ -66,8 +72,9 @@ def open_selected_device(config: DeviceConfig) -> InputDevice:
     return matches[0]
 
 
-def _matching_devices(config: DeviceConfig) -> list[InputDevice]:
-    matches: list[InputDevice] = []
+def _matching_devices(config: DeviceConfig) -> list[Any]:
+    _require_evdev()
+    matches: list[Any] = []
     for path in list_devices():
         device = InputDevice(path)
         name_ok = (
@@ -95,3 +102,8 @@ def _summarize_capabilities(capabilities: dict[object, object]) -> str:
             count = 1
         parts.append(f"{name}:{count}")
     return ", ".join(parts)
+
+
+def _require_evdev() -> None:
+    if InputDevice is None or ecodes is None or list_devices is None:
+        raise RuntimeError("evdev is required to access Linux input devices")
