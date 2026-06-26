@@ -7,7 +7,7 @@ Type=simple
 User=pi
 Group=input
 WorkingDirectory=/home/pi/radio-key-daemon
-ExecStart=/usr/bin/python3 -m radio_key_daemon --config /home/pi/radio-key-daemon/config.yaml
+ExecStart=/usr/bin/python3 -m radio_key_daemon --config /home/pi/radio-key-daemon/config.yaml --web --host 0.0.0.0 --port 8765 --allow-command-run
 Restart=on-failure
 RestartSec=2
 

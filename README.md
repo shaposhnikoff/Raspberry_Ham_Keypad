@@ -249,7 +249,7 @@ Place custom rules under `/etc/udev/rules.d/`, then reload udev rules.
 
 ## Systemd
 
-Copy the keypad service file:
+Copy the web control service file:
 
 ```bash
 sudo cp systemd/radio-key-daemon.service /etc/systemd/system/
@@ -257,6 +257,17 @@ sudo systemctl daemon-reload
 sudo systemctl enable radio-key-daemon
 sudo systemctl start radio-key-daemon
 ```
+
+The included service starts the web UI on `0.0.0.0:8765` with configured command
+run buttons enabled:
+
+```text
+--web --host 0.0.0.0 --port 8765 --allow-command-run
+```
+
+Open `http://RASPBERRY_PI_ADDRESS:8765/` from your LAN. This service runs the
+web UI process; it does not also run the evdev keypad event loop in the same
+process.
 
 Optional: run Hamlib `rigctld` as a service too:
 

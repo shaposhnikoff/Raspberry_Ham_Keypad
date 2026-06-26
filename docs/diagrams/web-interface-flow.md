@@ -2,7 +2,9 @@
 
 ```mermaid
 flowchart TD
-    Start[CLI starts with --web] --> NeedConfig{Config path provided}
+    Service[systemd starts radio-key-daemon service] --> Start[CLI starts with --web]
+    Manual[Manual CLI starts with --web] --> Start
+    Start --> NeedConfig{Config path provided}
     NeedConfig -->|No| ConfigError[Print --web requires --config]
     NeedConfig -->|Yes| LoadConfig[Load YAML config]
     LoadConfig --> ValidConfig{Config valid}
