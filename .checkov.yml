@@ -1,0 +1,12 @@
+---
+framework:
+  - terraform
+  - secrets
+  - dockerfile
+  - github_actions
+
+soft-fail-on:
+  - MEDIUM
+  - LOW
+
+compact: true
