@@ -60,8 +60,18 @@ def test_web_loads_config_and_starts_server(tmp_path, monkeypatch):
     )
     calls = []
 
-    def fake_run_web_server(config, *, config_path, host, port):
-        calls.append((config, config_path, host, port))
+    def fake_run_web_server(
+        config,
+        *,
+        config_path,
+        host,
+        port,
+        allow_service_restart,
+        service_name,
+    ):
+        calls.append(
+            (config, config_path, host, port, allow_service_restart, service_name)
+        )
 
     monkeypatch.setattr(cli, "run_web_server", fake_run_web_server)
 
@@ -74,6 +84,9 @@ def test_web_loads_config_and_starts_server(tmp_path, monkeypatch):
             "0.0.0.0",
             "--port",
             "9000",
+            "--allow-service-restart",
+            "--service-name",
+            "radio-key-daemon.service",
         ]
     )
 
@@ -82,3 +95,5 @@ def test_web_loads_config_and_starts_server(tmp_path, monkeypatch):
     assert calls[0][1] == str(config_file)
     assert calls[0][2] == "0.0.0.0"
     assert calls[0][3] == 9000
+    assert calls[0][4] is True
+    assert calls[0][5] == "radio-key-daemon.service"

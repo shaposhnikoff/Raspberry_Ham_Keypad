@@ -7,10 +7,10 @@ flowchart TD
     NeedConfig -->|Yes| LoadConfig[Load YAML config]
     LoadConfig --> ValidConfig{Config valid}
     ValidConfig -->|No| PrintError[Print config error]
-    ValidConfig -->|Yes| StartServer[Start read-only HTTP server]
+    ValidConfig -->|Yes| StartServer[Start HTTP server]
     StartServer --> Request[Browser sends GET request]
     Request --> Route{Route}
-    Route -->|/| Dashboard[Render HTML dashboard]
+    Route -->|/| Dashboard[Render editable bindings dashboard]
     Route -->|/api/status| Status[Return status JSON]
     Route -->|/api/config| Config[Return normalized config JSON]
     Route -->|/api/devices| Devices[List input devices]
@@ -19,4 +19,21 @@ flowchart TD
     DeviceOk -->|No| DeviceWarning[Return warning JSON]
     Route -->|/api/bindings| Bindings[Return bindings text]
     Route -->|Other| NotFound[Return 404]
+
+    BrowserPost[Browser sends POST request] --> Csrf{CSRF token valid}
+    Csrf -->|No| Forbidden[Return 403]
+    Csrf -->|Yes| PostRoute{POST route}
+    PostRoute -->|/api/config/commands| ValidateBindings[Validate submitted bindings]
+    ValidateBindings --> ValidBindings{Valid config}
+    ValidBindings -->|No| SaveRejected[Return 400]
+    ValidBindings -->|Yes| Backup[Write config backup]
+    Backup --> AtomicWrite[Replace YAML atomically]
+    AtomicWrite --> ReloadConfig[Reload in-memory config]
+    ReloadConfig --> SaveOk[Return save success JSON]
+
+    PostRoute -->|/api/systemd/restart| RestartAllowed{Restart enabled}
+    RestartAllowed -->|No| RestartForbidden[Return 403]
+    RestartAllowed -->|Yes| RestartService[Run systemctl restart service]
+    RestartService --> RestartResult[Return restart result JSON]
+    PostRoute -->|Other| PostNotFound[Return 404]
 ```

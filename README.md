@@ -16,7 +16,7 @@ No kernel driver is required. Linux already exposes USB keyboards as `/dev/input
 - Optional async command execution per command or globally.
 - Per-key debounce and repeat filtering.
 - Dry-run mode for testing.
-- Read-only local web interface for inspecting config, devices, and bindings.
+- Local web interface for inspecting devices and editing key bindings.
 - Systemd service example for Raspberry Pi.
 
 ## Install
@@ -162,15 +162,21 @@ uv run python -m radio_key_daemon --config ./config.yaml --show-bindings
 This parses the same YAML config as the daemon and prints an ASCII keyboard
 layout plus a command summary table.
 
-Start the read-only web interface:
+Start the web interface:
 
 ```bash
 uv run python -m radio_key_daemon --config ./config.yaml --web
 ```
 
 Open `http://127.0.0.1:8765/` on the same machine. The web interface shows
-the parsed config, command bindings, and available input devices. It does not
-edit YAML, execute commands, or control systemd services.
+the parsed config, command bindings, and available input devices. It can edit
+only the `commands` key bindings section of the YAML file. Device, behavior,
+and logging settings stay read-only in the web UI.
+
+Before saving changes, the server validates the new bindings with the same
+config parser used by the daemon. On a successful save it writes a rolling
+backup next to the config file, for example `config.yaml.bak`, then replaces
+the YAML file atomically. Existing YAML comments may not be preserved.
 
 By default the server binds only to `127.0.0.1`. To expose it on a LAN, choose
 the address explicitly and treat the page as operational station tooling:
@@ -178,6 +184,15 @@ the address explicitly and treat the page as operational station tooling:
 ```bash
 uv run python -m radio_key_daemon --config ./config.yaml --web --host 0.0.0.0 --port 8765
 ```
+
+By default the web UI will not restart services. To show the restart button and
+allow `systemctl restart radio-key-daemon.service`, start it explicitly:
+
+```bash
+uv run python -m radio_key_daemon --config ./config.yaml --web --allow-service-restart
+```
+
+Use `--service-name` if your systemd unit has a different name.
 
 ## Exclusive Grab
 

@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--web",
         action="store_true",
-        help="Start the read-only web interface",
+        help="Start the web interface",
     )
     parser.add_argument(
         "--host",
@@ -53,6 +53,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=8765,
         type=int,
         help="Port for --web (default: 8765)",
+    )
+    parser.add_argument(
+        "--allow-service-restart",
+        action="store_true",
+        help="Allow the web interface to restart the systemd service",
+    )
+    parser.add_argument(
+        "--service-name",
+        default="radio-key-daemon.service",
+        help="Systemd service name for --allow-service-restart",
     )
     return parser
 
@@ -88,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
                 config_path=args.config,
                 host=args.host,
                 port=args.port,
+                allow_service_restart=args.allow_service_restart,
+                service_name=args.service_name,
             )
         except (ConfigError, OSError) as exc:
             logger.error("%s", exc)
