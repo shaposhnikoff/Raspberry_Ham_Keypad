@@ -62,6 +62,13 @@ def open_selected_device(config: DeviceConfig) -> Any:
             "No input device matched device.name_contains or device.phys_contains"
         )
     if len(matches) > 1:
+        keyboard_like_matches = [
+            device for device in matches if device_info(device).is_keyboard_like
+        ]
+        if len(keyboard_like_matches) == 1:
+            selected = keyboard_like_matches[0]
+            _close_unselected_devices(matches, selected)
+            return selected
         details = "\n".join(
             f"- {device.path}: name={device.name!r} phys={device.phys!r}"
             for device in matches
@@ -70,6 +77,12 @@ def open_selected_device(config: DeviceConfig) -> Any:
             device.close()
         raise DeviceSelectionError(f"Multiple matching input devices found:\n{details}")
     return matches[0]
+
+
+def _close_unselected_devices(devices: list[Any], selected: Any) -> None:
+    for device in devices:
+        if device is not selected:
+            device.close()
 
 
 def _matching_devices(config: DeviceConfig) -> list[Any]:

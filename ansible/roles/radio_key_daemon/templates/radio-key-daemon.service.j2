@@ -8,7 +8,7 @@ User={{ radio_key_daemon_user }}
 Group={{ radio_key_daemon_group }}
 WorkingDirectory={{ radio_key_daemon_install_dir }}
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 -m radio_key_daemon --config {{ radio_key_daemon_config_path }}{% if radio_key_daemon_web_enabled %} --web --host {{ radio_key_daemon_web_host }} --port {{ radio_key_daemon_web_port }}{% endif %}{% if radio_key_daemon_allow_command_run %} --allow-command-run{% endif %}{% if radio_key_daemon_allow_service_restart %} --allow-service-restart{% endif %}
+ExecStart=/usr/bin/python3 -m radio_key_daemon --config {{ radio_key_daemon_config_path }}{{ (' --web --host ' ~ radio_key_daemon_web_host ~ ' --port ' ~ radio_key_daemon_web_port) if radio_key_daemon_web_enabled else '' }}{{ ' --allow-command-run' if radio_key_daemon_allow_command_run else '' }}{{ ' --allow-service-restart' if radio_key_daemon_allow_service_restart else '' }}
 Restart=on-failure
 RestartSec=2
 

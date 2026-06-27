@@ -221,7 +221,7 @@ Default beacon settings:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `RIGCTL_MODEL` | `2` | Hamlib NET rigctl model. |
-| `RIGCTL_ENDPOINT` | `192.168.10.36:4532` | `rigctld` host and port. |
+| `RIGCTL_ENDPOINT` | `127.0.0.1:4532` | `rigctld` host and port. |
 | `CALLSIGN` | `UT3UDX` | Callsign used in the CW message. |
 | `FREQ` | `14025000` | Frequency in Hz. |
 | `REPEAT` | `1` | Number of beacon rounds. |
@@ -239,7 +239,7 @@ Run it manually before assigning it to a live keypad:
 Override settings with environment variables:
 
 ```bash
-RIGCTL_ENDPOINT=192.168.10.36:4532 CALLSIGN=UT3UDX FREQ=14025000 /home/pi/radio/beacon.sh
+RIGCTL_ENDPOINT=127.0.0.1:4532 CALLSIGN=UT3UDX FREQ=14025000 /home/pi/radio/beacon.sh
 ```
 
 ## Raw CAT Commands

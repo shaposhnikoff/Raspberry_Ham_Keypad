@@ -23,7 +23,13 @@ all:
           ansible_host: 192.168.10.50
           ansible_user: pi
           ansible_python_interpreter: /usr/bin/python3
+          # Optional: uncomment in ansible/inventory.yml if needed.
+          # ansible_ssh_private_key_file: ~/.ssh/id_raspberry_pi
 ```
+
+Use a placeholder in committed examples only. Put the real SSH private key path
+in your local ignored `ansible/inventory.yml`, or use `~/.ssh/config` / SSH
+agent.
 
 ## Dry Run
 
@@ -41,11 +47,12 @@ ansible-playbook -i ansible/inventory.yml ansible/deploy.yml
 
 By default the role:
 
-- Installs `git`, `hamlib-utils`, `python3`, `python3-evdev`, and `python3-yaml`.
+- Installs `acl`, `git`, `libhamlib-utils`, `python3`, `python3-evdev`, and `python3-yaml`.
 - Checks out this repository to `/home/pi/radio-key-daemon`.
 - Copies `ftdx10/ftdx10_keypad_full_config.yaml` to `config.yaml` only if it is missing.
 - Copies `ftdx10_cat.py` and `beacon.sh` to `/home/pi/radio`.
 - Installs and starts `radio-key-daemon.service`.
+- Installs and starts `rigctld.service`.
 - Starts the daemon with `--web --host 0.0.0.0 --port 8765 --allow-command-run`.
 
 The playbook does not overwrite an existing remote `config.yaml` unless you pass:
@@ -71,11 +78,11 @@ ansible-playbook -i ansible/inventory.yml ansible/deploy.yml \
   -e radio_key_daemon_version=main
 ```
 
-Install and start the optional `rigctld` service:
+Disable the `rigctld` service:
 
 ```bash
 ansible-playbook -i ansible/inventory.yml ansible/deploy.yml \
-  -e radio_key_daemon_install_rigctld_service=true
+  -e '{"radio_key_daemon_install_rigctld_service": false}'
 ```
 
 After deployment, open:
@@ -104,11 +111,11 @@ Most deployment settings live in
 ## Validation
 
 ```bash
-uv run --with yamllint==1.35.1 yamllint -c .yamllint.yml ansible
+uv run --with yamllint==1.35.1 yamllint -c ansible/.yamllint ansible
 uv run --with ansible-core==2.17.7 ansible-playbook \
   -i ansible/inventory.example.yml ansible/deploy.yml --syntax-check
-uv run --with ansible-lint==24.12.2 --with ansible-core==2.17.7 \
-  ansible-lint ansible
+(cd ansible && uv run --with ansible-lint==24.12.2 \
+  --with ansible-core==2.17.7 ansible-lint .)
 ```
 
 The Molecule scenario is intentionally systemd-light. It verifies role syntax

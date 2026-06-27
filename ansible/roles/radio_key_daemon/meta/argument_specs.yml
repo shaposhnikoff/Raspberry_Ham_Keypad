@@ -38,7 +38,10 @@ argument_specs:
         default: true
       radio_key_daemon_install_rigctld_service:
         type: bool
-        default: false
+        default: true
+      radio_key_daemon_manage_user:
+        type: bool
+        default: true
       radio_key_daemon_checkout_become:
         type: bool
         default: true

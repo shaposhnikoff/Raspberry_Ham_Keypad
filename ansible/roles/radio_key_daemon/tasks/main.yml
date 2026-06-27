@@ -2,7 +2,7 @@
 - name: Assert supported OS family
   ansible.builtin.assert:
     that:
-      - ansible_os_family in radio_key_daemon_supported_os_families
+      - ansible_facts.os_family in radio_key_daemon_supported_os_families
     fail_msg: >-
       This role targets Raspberry Pi OS or another supported OS family:
       {{ radio_key_daemon_supported_os_families | join(', ') }}.
@@ -56,6 +56,29 @@
   tags:
     - systemd
 
+- name: Check existing service user
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ radio_key_daemon_user }}"
+    fail_key: false
+  tags:
+    - always
+
+- name: Check existing ACL support
+  ansible.builtin.stat:
+    path: /usr/bin/setfacl
+  register: radio_key_daemon_setfacl_stat
+  tags:
+    - always
+
+- name: Record whether service user exists
+  ansible.builtin.set_fact:
+    radio_key_daemon_user_exists: >-
+      {{ ansible_facts.getent_passwd[radio_key_daemon_user] is defined and
+         ansible_facts.getent_passwd[radio_key_daemon_user] is not none }}
+  tags:
+    - always
+
 - name: Explain check mode limits on a clean host
   ansible.builtin.debug:
     msg: >-
@@ -68,6 +91,30 @@
   tags:
     - always
 
+- name: Explain check mode limits before service user exists
+  ansible.builtin.debug:
+    msg: >-
+      Check mode is running before service user {{ radio_key_daemon_user }} exists.
+      Tasks that must run as that user will be skipped until a real deploy creates it.
+  when:
+    - ansible_check_mode
+    - not radio_key_daemon_user_exists
+  tags:
+    - always
+
+- name: Explain check mode limits before ACL support exists
+  ansible.builtin.debug:
+    msg: >-
+      Check mode is running before ACL support is installed. Checkout as
+      {{ radio_key_daemon_user }} will be skipped until a real deploy installs
+      the acl package.
+  when:
+    - ansible_check_mode
+    - radio_key_daemon_checkout_become
+    - not radio_key_daemon_setfacl_stat.stat.exists
+  tags:
+    - always
+
 - name: Install runtime packages
   ansible.builtin.apt:
     name: "{{ radio_key_daemon_apt_packages }}"
@@ -77,6 +124,17 @@
   when: radio_key_daemon_manage_packages
   tags:
     - packages
+
+- name: Ensure service user exists
+  ansible.builtin.user:
+    name: "{{ radio_key_daemon_user }}"
+    state: present
+    create_home: true
+    home: "/home/{{ radio_key_daemon_user }}"
+    shell: /bin/bash
+  when: radio_key_daemon_manage_user
+  tags:
+    - app
 
 - name: Add service user to input and serial groups
   ansible.builtin.user:
@@ -94,6 +152,7 @@
     owner: "{{ radio_key_daemon_user }}"
     group: "{{ radio_key_daemon_user }}"
     mode: "0755"
+  when: not ansible_check_mode or radio_key_daemon_user_exists
   tags:
     - app
 
@@ -105,7 +164,10 @@
     update: true
   become: "{{ radio_key_daemon_checkout_become }}"
   become_user: "{{ radio_key_daemon_user }}"
-  when: radio_key_daemon_manage_checkout
+  when:
+    - radio_key_daemon_manage_checkout
+    - not ansible_check_mode or radio_key_daemon_user_exists
+    - not ansible_check_mode or not radio_key_daemon_checkout_become or radio_key_daemon_setfacl_stat.stat.exists
   tags:
     - app
 
@@ -132,6 +194,14 @@
   tags:
     - config
 
+- name: Check existing helper source directory
+  ansible.builtin.stat:
+    path: "{{ radio_key_daemon_install_dir }}/ftdx10"
+  register: radio_key_daemon_helper_source_dir_stat
+  when: radio_key_daemon_deploy_ftdx10_tools
+  tags:
+    - helpers
+
 - name: Create radio helper directory
   ansible.builtin.file:
     path: "{{ radio_key_daemon_radio_dir }}"
@@ -139,7 +209,9 @@
     owner: "{{ radio_key_daemon_user }}"
     group: "{{ radio_key_daemon_user }}"
     mode: "0755"
-  when: radio_key_daemon_deploy_ftdx10_tools
+  when:
+    - radio_key_daemon_deploy_ftdx10_tools
+    - not ansible_check_mode or radio_key_daemon_user_exists
   tags:
     - helpers
 
@@ -155,6 +227,7 @@
   when:
     - radio_key_daemon_deploy_ftdx10_tools
     - not ansible_check_mode or radio_key_daemon_install_dir_stat.stat.exists
+    - not ansible_check_mode or radio_key_daemon_helper_source_dir_stat.stat.isdir | default(false)
   tags:
     - helpers
 
@@ -185,7 +258,7 @@
     - validate
 
 - name: Enable and start radio key daemon
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: "{{ radio_key_daemon_service_name }}"
     enabled: true
     state: started
@@ -225,7 +298,7 @@
     - rigctld
 
 - name: Enable and start rigctld
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: "{{ radio_key_daemon_rigctld_service_name }}"
     enabled: true
     state: started

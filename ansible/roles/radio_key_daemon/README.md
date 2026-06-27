@@ -13,8 +13,9 @@ Important defaults are defined in `defaults/main.yml`:
 - `radio_key_daemon_overwrite_config`: Whether to overwrite an existing config.
 - `radio_key_daemon_web_host` and `radio_key_daemon_web_port`: Web bind address.
 - `radio_key_daemon_allow_command_run`: Enables per-key web run buttons.
-- `radio_key_daemon_install_rigctld_service`: Installs optional `rigctld`.
-- `radio_key_daemon_rigctld_*`: Optional `rigctld` service settings.
+- `radio_key_daemon_manage_user`: Creates the service user, `pi` by default.
+- `radio_key_daemon_install_rigctld_service`: Installs `rigctld`, enabled by default.
+- `radio_key_daemon_rigctld_*`: `rigctld` service settings.
 
 ## Example
 

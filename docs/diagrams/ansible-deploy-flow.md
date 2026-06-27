@@ -8,14 +8,25 @@ flowchart TD
     Facts --> Debian{Debian family OS}
     Debian -->|No| StopUnsupported[Stop with unsupported OS error]
     Debian -->|Yes| Preflight[Assert vars and stat existing files]
-    Preflight --> CheckMode{Check mode}
+    Preflight --> UserLookup[Check service user state]
+    UserLookup --> AclLookup[Check setfacl availability]
+    AclLookup --> CheckMode{Check mode}
     CheckMode -->|Yes and clean host| ExplainSkip[Explain runtime-dependent skips]
     ExplainSkip --> Packages
     CheckMode -->|No or existing host| Packages[Install runtime apt packages]
-    Packages --> UserGroups[Add pi user to input and dialout groups]
-    UserGroups --> Checkout[Checkout repository to install directory]
+    Packages --> EnsureUser[Ensure service user exists]
+    EnsureUser --> UserGroups[Add service user to input and dialout groups]
+    UserGroups --> UserReady{Service user exists now}
+    UserReady -->|No in clean check mode| SkipUserTasks[Skip tasks that must run as service user]
+    UserReady -->|Yes| AclReady{ACL support available or real deploy}
+    AclReady -->|No in check mode| SkipCheckout[Skip checkout as service user]
+    AclReady -->|Yes| AppDir[Create application directory]
+    AppDir --> Checkout[Checkout repository to install directory]
+    SkipUserTasks --> Config
+    SkipCheckout --> Config
     Checkout --> Config[Copy config if missing or overwrite requested]
-    Config --> Helpers{Can copy helper scripts}
+    Config --> HelperSource[Check helper source directory]
+    HelperSource --> Helpers{Can copy helper scripts}
     Helpers -->|No in clean check mode| Unit
     Helpers -->|Yes| HelperCopy[Install radio helper scripts]
     HelperCopy --> Unit[Render radio-key-daemon systemd unit]
@@ -28,9 +39,9 @@ flowchart TD
     StartDecision -->|No in check mode| Done[Deployment plan complete]
     StartDecision -->|Yes| StartService[Enable and start radio-key-daemon]
     StartService --> WebAndKeypad[Service runs web thread and keypad loop]
-    StartService --> OptionalRig{Install rigctld service}
-    OptionalRig -->|No| Done[Deployment complete]
-    OptionalRig -->|Yes| RigDefaults[Render rigctld defaults]
+    StartService --> RigDecision{Install rigctld service}
+    RigDecision -->|No override| Done[Deployment complete]
+    RigDecision -->|Default yes| RigDefaults[Render rigctld defaults]
     RigDefaults --> RigUnit[Render rigctld systemd unit]
     RigUnit --> RigStart[Enable and start rigctld]
     RigStart --> Done

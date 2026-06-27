@@ -95,6 +95,11 @@ device:
   phys_contains: null
 ```
 
+When a broad name match finds several interfaces from the same USB keyboard,
+the daemon automatically chooses the single keyboard-like interface when there
+is exactly one. Use an exact `path` or add `phys_contains` if the match is still
+ambiguous.
+
 Map keys to commands:
 
 ```yaml

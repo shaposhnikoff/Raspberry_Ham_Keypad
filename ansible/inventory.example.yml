@@ -7,3 +7,6 @@ all:
           ansible_host: 192.168.10.50
           ansible_user: pi
           ansible_python_interpreter: /usr/bin/python3
+          # Optional: uncomment after copying this file to ansible/inventory.yml.
+          # Keep real private key paths out of committed example inventories.
+          # ansible_ssh_private_key_file: ~/.ssh/id_raspberry_pi

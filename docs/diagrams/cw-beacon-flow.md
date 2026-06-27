@@ -4,7 +4,8 @@
 flowchart TD
     Start[Keypad KEY_KPDOT or web run button] --> Lookup[Load saved YAML binding]
     Lookup --> Runner[ActionRunner starts /home/pi/radio/beacon.sh]
-    Runner --> SetFreq[rigctl F sets beacon frequency]
+    Runner --> Endpoint[Use local rigctld at 127.0.0.1:4532 by default]
+    Endpoint --> SetFreq[rigctl F sets beacon frequency]
     SetFreq --> SetMode[rigctl M sets CW mode and filter]
     SetMode --> SetPower[rigctl L sets RFPOWER]
     SetPower --> Loop{More beacon rounds}
