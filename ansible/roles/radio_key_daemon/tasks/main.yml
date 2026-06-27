@@ -1,0 +1,238 @@
+---
+- name: Assert supported OS family
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in radio_key_daemon_supported_os_families
+    fail_msg: >-
+      This role targets Raspberry Pi OS or another supported OS family:
+      {{ radio_key_daemon_supported_os_families | join(', ') }}.
+  tags:
+    - always
+
+- name: Assert required role variables
+  ansible.builtin.assert:
+    that:
+      - radio_key_daemon_user | length > 0
+      - radio_key_daemon_group | length > 0
+      - radio_key_daemon_install_dir | length > 0
+      - radio_key_daemon_config_path | length > 0
+      - radio_key_daemon_web_port | int > 0
+      - radio_key_daemon_service_name | length > 0
+    fail_msg: "One or more required radio_key_daemon variables are empty or invalid."
+  tags:
+    - always
+
+- name: Show deployment summary
+  ansible.builtin.debug:
+    msg:
+      - "repo={{ radio_key_daemon_repo_url }} version={{ radio_key_daemon_version }}"
+      - "install_dir={{ radio_key_daemon_install_dir }}"
+      - "config={{ radio_key_daemon_config_path }} overwrite={{ radio_key_daemon_overwrite_config }}"
+      - >-
+        web={{ radio_key_daemon_web_enabled }}
+        host={{ radio_key_daemon_web_host }}
+        port={{ radio_key_daemon_web_port }}
+  tags:
+    - always
+
+- name: Check existing application directory
+  ansible.builtin.stat:
+    path: "{{ radio_key_daemon_install_dir }}"
+  register: radio_key_daemon_install_dir_stat
+  tags:
+    - always
+
+- name: Check existing config file
+  ansible.builtin.stat:
+    path: "{{ radio_key_daemon_config_path }}"
+  register: radio_key_daemon_config_stat
+  tags:
+    - always
+
+- name: Check existing systemd unit
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ radio_key_daemon_service_name }}"
+  register: radio_key_daemon_unit_stat
+  tags:
+    - systemd
+
+- name: Explain check mode limits on a clean host
+  ansible.builtin.debug:
+    msg: >-
+      Check mode is running before the application tree exists. Runtime-dependent
+      validation, helper copy, and service start tasks will be skipped until a
+      real deploy creates {{ radio_key_daemon_install_dir }}.
+  when:
+    - ansible_check_mode
+    - not radio_key_daemon_install_dir_stat.stat.exists
+  tags:
+    - always
+
+- name: Install runtime packages
+  ansible.builtin.apt:
+    name: "{{ radio_key_daemon_apt_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: radio_key_daemon_manage_packages
+  tags:
+    - packages
+
+- name: Add service user to input and serial groups
+  ansible.builtin.user:
+    name: "{{ radio_key_daemon_user }}"
+    groups: "{{ radio_key_daemon_extra_groups }}"
+    append: true
+  when: radio_key_daemon_manage_user_groups
+  tags:
+    - app
+
+- name: Create application directory
+  ansible.builtin.file:
+    path: "{{ radio_key_daemon_install_dir }}"
+    state: directory
+    owner: "{{ radio_key_daemon_user }}"
+    group: "{{ radio_key_daemon_user }}"
+    mode: "0755"
+  tags:
+    - app
+
+- name: Checkout application repository
+  ansible.builtin.git:
+    repo: "{{ radio_key_daemon_repo_url }}"
+    dest: "{{ radio_key_daemon_install_dir }}"
+    version: "{{ radio_key_daemon_version }}"
+    update: true
+  become: "{{ radio_key_daemon_checkout_become }}"
+  become_user: "{{ radio_key_daemon_user }}"
+  when: radio_key_daemon_manage_checkout
+  tags:
+    - app
+
+- name: Ensure application tree ownership
+  ansible.builtin.file:
+    path: "{{ radio_key_daemon_install_dir }}"
+    state: directory
+    owner: "{{ radio_key_daemon_user }}"
+    group: "{{ radio_key_daemon_user }}"
+    recurse: true
+  when: not ansible_check_mode or radio_key_daemon_install_dir_stat.stat.exists
+  tags:
+    - app
+
+- name: Install keypad config when missing or explicitly requested
+  ansible.builtin.copy:
+    src: "{{ radio_key_daemon_config_src }}"
+    dest: "{{ radio_key_daemon_config_path }}"
+    owner: "{{ radio_key_daemon_user }}"
+    group: "{{ radio_key_daemon_user }}"
+    mode: "0644"
+    force: "{{ radio_key_daemon_overwrite_config }}"
+  when: not ansible_check_mode or radio_key_daemon_install_dir_stat.stat.exists
+  tags:
+    - config
+
+- name: Create radio helper directory
+  ansible.builtin.file:
+    path: "{{ radio_key_daemon_radio_dir }}"
+    state: directory
+    owner: "{{ radio_key_daemon_user }}"
+    group: "{{ radio_key_daemon_user }}"
+    mode: "0755"
+  when: radio_key_daemon_deploy_ftdx10_tools
+  tags:
+    - helpers
+
+- name: Install FTDX10 helper scripts
+  ansible.builtin.copy:
+    src: "{{ radio_key_daemon_install_dir }}/ftdx10/{{ item.name }}"
+    dest: "{{ radio_key_daemon_radio_dir }}/{{ item.name }}"
+    owner: "{{ radio_key_daemon_user }}"
+    group: "{{ radio_key_daemon_user }}"
+    mode: "{{ item.mode }}"
+    remote_src: true
+  loop: "{{ radio_key_daemon_helper_scripts }}"
+  when:
+    - radio_key_daemon_deploy_ftdx10_tools
+    - not ansible_check_mode or radio_key_daemon_install_dir_stat.stat.exists
+  tags:
+    - helpers
+
+- name: Install radio key daemon systemd unit
+  ansible.builtin.template:
+    src: radio-key-daemon.service.j2
+    dest: "/etc/systemd/system/{{ radio_key_daemon_service_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart radio key daemon
+  when: radio_key_daemon_manage_systemd
+  tags:
+    - systemd
+
+- name: Validate radio key daemon config
+  ansible.builtin.command:
+    cmd: "/usr/bin/python3 -m radio_key_daemon --config {{ radio_key_daemon_config_path }} --show-bindings"
+    chdir: "{{ radio_key_daemon_install_dir }}"
+  changed_when: false
+  when:
+    - radio_key_daemon_validate_config
+    - not ansible_check_mode or
+      (radio_key_daemon_install_dir_stat.stat.exists and radio_key_daemon_config_stat.stat.exists)
+  tags:
+    - validate
+
+- name: Enable and start radio key daemon
+  ansible.builtin.systemd:
+    name: "{{ radio_key_daemon_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - radio_key_daemon_manage_systemd
+    - radio_key_daemon_manage_service
+    - not ansible_check_mode or radio_key_daemon_unit_stat.stat.exists
+  tags:
+    - systemd
+
+- name: Install rigctld defaults
+  ansible.builtin.template:
+    src: rigctld.default.j2
+    dest: /etc/default/rigctld
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart rigctld
+  when: radio_key_daemon_install_rigctld_service
+  tags:
+    - rigctld
+
+- name: Install rigctld systemd unit
+  ansible.builtin.template:
+    src: rigctld.service.j2
+    dest: "/etc/systemd/system/{{ radio_key_daemon_rigctld_service_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart rigctld
+  when: radio_key_daemon_install_rigctld_service
+  tags:
+    - rigctld
+
+- name: Enable and start rigctld
+  ansible.builtin.systemd:
+    name: "{{ radio_key_daemon_rigctld_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - radio_key_daemon_install_rigctld_service
+    - radio_key_daemon_manage_systemd
+    - not ansible_check_mode
+  tags:
+    - rigctld

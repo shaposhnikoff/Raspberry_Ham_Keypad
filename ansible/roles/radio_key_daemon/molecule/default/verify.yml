@@ -1,0 +1,16 @@
+---
+- name: Verify radio key daemon role structure
+  hosts: all
+  become: false
+  gather_facts: false
+
+  tasks:
+    - name: Check molecule application checkout exists
+      ansible.builtin.stat:
+        path: /tmp/radio-key-daemon-molecule
+      register: radio_key_daemon_molecule_checkout
+
+    - name: Assert molecule application checkout exists
+      ansible.builtin.assert:
+        that:
+          - radio_key_daemon_molecule_checkout.stat.exists

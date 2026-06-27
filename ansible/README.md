@@ -1,7 +1,8 @@
 # Ansible Deployment
 
-This playbook deploys `radio_key_daemon` to a Raspberry Pi and starts the
-systemd service in combined keypad plus web mode.
+This directory contains a thin deploy playbook and the reusable
+`radio_key_daemon` role. The role deploys `radio_key_daemon` to a Raspberry Pi
+and starts the systemd service in combined keypad plus web mode.
 
 ## Inventory
 
@@ -38,7 +39,7 @@ ansible-playbook -i ansible/inventory.yml ansible/deploy.yml --check --diff
 ansible-playbook -i ansible/inventory.yml ansible/deploy.yml
 ```
 
-By default the playbook:
+By default the role:
 
 - Installs `git`, `hamlib-utils`, `python3`, `python3-evdev`, and `python3-yaml`.
 - Checks out this repository to `/home/pi/radio-key-daemon`.
@@ -81,4 +82,39 @@ After deployment, open:
 
 ```text
 http://RASPBERRY_PI_ADDRESS:8765/
+```
+
+## Role Layout
+
+```text
+ansible/deploy.yml
+ansible/roles/radio_key_daemon/
+  defaults/main.yml
+  handlers/main.yml
+  meta/main.yml
+  meta/argument_specs.yml
+  molecule/default/
+  tasks/main.yml
+  templates/
+```
+
+Most deployment settings live in
+`ansible/roles/radio_key_daemon/defaults/main.yml`.
+
+## Validation
+
+```bash
+uv run --with yamllint==1.35.1 yamllint -c .yamllint.yml ansible
+uv run --with ansible-core==2.17.7 ansible-playbook \
+  -i ansible/inventory.example.yml ansible/deploy.yml --syntax-check
+uv run --with ansible-lint==24.12.2 --with ansible-core==2.17.7 \
+  ansible-lint ansible
+```
+
+The Molecule scenario is intentionally systemd-light. It verifies role syntax
+without requiring a full Raspberry Pi systemd container:
+
+```bash
+cd ansible/roles/radio_key_daemon
+uv run --with molecule==24.12.0 --with ansible-core==2.17.7 molecule syntax
 ```

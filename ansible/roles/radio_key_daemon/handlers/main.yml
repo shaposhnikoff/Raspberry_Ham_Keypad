@@ -1,0 +1,25 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - radio_key_daemon_manage_systemd
+    - not ansible_check_mode
+
+- name: Restart radio key daemon
+  ansible.builtin.systemd:
+    name: "{{ radio_key_daemon_service_name }}"
+    state: restarted
+  when:
+    - radio_key_daemon_manage_systemd
+    - radio_key_daemon_manage_service
+    - not ansible_check_mode
+
+- name: Restart rigctld
+  ansible.builtin.systemd:
+    name: "{{ radio_key_daemon_rigctld_service_name }}"
+    state: restarted
+  when:
+    - radio_key_daemon_manage_systemd
+    - radio_key_daemon_install_rigctld_service
+    - not ansible_check_mode

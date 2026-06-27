@@ -1,0 +1,28 @@
+---
+- name: Converge radio key daemon role
+  hosts: all
+  become: false
+  gather_facts: true
+
+  vars:
+    radio_key_daemon_molecule_repo_root: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/../../.."
+    radio_key_daemon_supported_os_families:
+      - Darwin
+      - Debian
+    radio_key_daemon_user: "{{ lookup('env', 'USER') }}"
+    radio_key_daemon_group: "staff"
+    radio_key_daemon_extra_groups: []
+    radio_key_daemon_install_dir: "/tmp/radio-key-daemon-molecule"
+    radio_key_daemon_repo_url: "file://{{ radio_key_daemon_molecule_repo_root }}"
+    radio_key_daemon_config_src: "{{ radio_key_daemon_molecule_repo_root }}/config.example.yaml"
+    radio_key_daemon_config_path: "{{ radio_key_daemon_install_dir }}/config.yaml"
+    radio_key_daemon_radio_dir: "/tmp/radio-key-daemon-radio"
+    radio_key_daemon_manage_packages: false
+    radio_key_daemon_manage_user_groups: false
+    radio_key_daemon_checkout_become: false
+    radio_key_daemon_manage_systemd: false
+    radio_key_daemon_manage_service: false
+    radio_key_daemon_validate_config: false
+
+  roles:
+    - role: radio_key_daemon

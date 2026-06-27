@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: radio_key_daemon
+  namespace: raspberry_ham_keypad
+  author: Raspberry Ham Keypad maintainers
+  description: Deploy Radio Key Daemon on Raspberry Pi OS.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - bullseye
+
+dependencies: []

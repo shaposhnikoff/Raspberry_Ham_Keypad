@@ -1,0 +1,44 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy Radio Key Daemon
+    options:
+      radio_key_daemon_repo_url:
+        type: str
+        required: true
+      radio_key_daemon_version:
+        type: str
+        required: true
+      radio_key_daemon_user:
+        type: str
+        required: true
+      radio_key_daemon_install_dir:
+        type: str
+        required: true
+      radio_key_daemon_config_src:
+        type: str
+        required: true
+      radio_key_daemon_config_path:
+        type: str
+        required: true
+      radio_key_daemon_overwrite_config:
+        type: bool
+        default: false
+      radio_key_daemon_web_enabled:
+        type: bool
+        default: true
+      radio_key_daemon_web_host:
+        type: str
+        default: "0.0.0.0"
+      radio_key_daemon_web_port:
+        type: int
+        default: 8765
+      radio_key_daemon_allow_command_run:
+        type: bool
+        default: true
+      radio_key_daemon_install_rigctld_service:
+        type: bool
+        default: false
+      radio_key_daemon_checkout_become:
+        type: bool
+        default: true

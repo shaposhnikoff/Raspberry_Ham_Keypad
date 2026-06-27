@@ -1,0 +1,55 @@
+---
+radio_key_daemon_repo_url: "https://github.com/shaposhnikoff/Raspberry_Ham_Keypad.git"
+radio_key_daemon_version: "main"
+
+radio_key_daemon_user: "pi"
+radio_key_daemon_group: "input"
+radio_key_daemon_extra_groups:
+  - input
+  - dialout
+
+radio_key_daemon_install_dir: "/home/{{ radio_key_daemon_user }}/radio-key-daemon"
+radio_key_daemon_config_src: "../ftdx10/ftdx10_keypad_full_config.yaml"
+radio_key_daemon_config_path: "{{ radio_key_daemon_install_dir }}/config.yaml"
+radio_key_daemon_overwrite_config: false
+radio_key_daemon_validate_config: true
+
+radio_key_daemon_web_enabled: true
+radio_key_daemon_web_host: "0.0.0.0"
+radio_key_daemon_web_port: 8765
+radio_key_daemon_allow_command_run: true
+radio_key_daemon_allow_service_restart: false
+radio_key_daemon_service_name: "radio-key-daemon.service"
+radio_key_daemon_manage_service: true
+
+radio_key_daemon_manage_packages: true
+radio_key_daemon_manage_user_groups: true
+radio_key_daemon_manage_checkout: true
+radio_key_daemon_checkout_become: true
+radio_key_daemon_manage_systemd: true
+
+radio_key_daemon_deploy_ftdx10_tools: true
+radio_key_daemon_radio_dir: "/home/{{ radio_key_daemon_user }}/radio"
+radio_key_daemon_helper_scripts:
+  - name: ftdx10_cat.py
+    mode: "0755"
+  - name: beacon.sh
+    mode: "0755"
+
+radio_key_daemon_install_rigctld_service: false
+radio_key_daemon_rigctld_service_name: "rigctld.service"
+radio_key_daemon_rigctld_model: "1042"
+radio_key_daemon_rigctld_device: "/dev/ttyUSB0"
+radio_key_daemon_rigctld_baud: "38400"
+radio_key_daemon_rigctld_bind: "127.0.0.1"
+radio_key_daemon_rigctld_port: "4532"
+
+radio_key_daemon_supported_os_families:
+  - Debian
+
+radio_key_daemon_apt_packages:
+  - git
+  - hamlib-utils
+  - python3
+  - python3-evdev
+  - python3-yaml
