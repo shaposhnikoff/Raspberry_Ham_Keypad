@@ -10,7 +10,10 @@ Important defaults are defined in `defaults/main.yml`:
 - `radio_key_daemon_version`: Branch, tag, or commit to checkout.
 - `radio_key_daemon_install_dir`: Remote checkout path.
 - `radio_key_daemon_config_src`: Local config copied to the target when missing.
+- `radio_key_daemon_config_path`: Remote runtime config path outside the checkout.
+- `radio_key_daemon_migrate_legacy_config`: Migrates the old checkout-local config when needed.
 - `radio_key_daemon_overwrite_config`: Whether to overwrite an existing config.
+- `radio_key_daemon_preserve_local_checkout_changes`: Stashes tracked local checkout changes before update.
 - `radio_key_daemon_web_host` and `radio_key_daemon_web_port`: Web bind address.
 - `radio_key_daemon_allow_command_run`: Enables per-key web run buttons.
 - `radio_key_daemon_manage_user`: Creates the service user, `pi` by default.

@@ -21,7 +21,16 @@ flowchart TD
     UserReady -->|Yes| AclReady{ACL support available or real deploy}
     AclReady -->|No in check mode| SkipCheckout[Skip checkout as service user]
     AclReady -->|Yes| AppDir[Create application directory]
-    AppDir --> Checkout[Checkout repository to install directory]
+    AppDir --> ConfigDir[Create runtime config directory]
+    ConfigDir --> LegacyConfig{Legacy checkout config exists and runtime config missing}
+    LegacyConfig -->|Yes| MigrateConfig[Copy legacy config to runtime config path]
+    LegacyConfig -->|No| DirtyCheck
+    MigrateConfig --> DirtyCheck[Check tracked checkout modifications]
+    DirtyCheck --> DirtyCheckout{Tracked checkout changes}
+    DirtyCheckout -->|Yes and preserve enabled| StashChanges[Stash tracked local changes]
+    DirtyCheckout -->|Yes and preserve disabled| StopDirty[Stop with dirty checkout message]
+    DirtyCheckout -->|No| Checkout[Checkout repository to install directory]
+    StashChanges --> Checkout
     SkipUserTasks --> Config
     SkipCheckout --> Config
     Checkout --> Config[Copy config if missing or overwrite requested]

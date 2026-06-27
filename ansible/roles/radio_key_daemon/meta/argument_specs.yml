@@ -21,6 +21,12 @@ argument_specs:
       radio_key_daemon_config_path:
         type: str
         required: true
+      radio_key_daemon_legacy_config_path:
+        type: str
+        required: true
+      radio_key_daemon_migrate_legacy_config:
+        type: bool
+        default: true
       radio_key_daemon_overwrite_config:
         type: bool
         default: false
@@ -43,5 +49,8 @@ argument_specs:
         type: bool
         default: true
       radio_key_daemon_checkout_become:
+        type: bool
+        default: true
+      radio_key_daemon_preserve_local_checkout_changes:
         type: bool
         default: true

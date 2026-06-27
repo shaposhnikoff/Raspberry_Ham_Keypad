@@ -49,17 +49,28 @@ By default the role:
 
 - Installs `acl`, `git`, `libhamlib-utils`, `python3`, `python3-evdev`, and `python3-yaml`.
 - Checks out this repository to `/home/pi/radio-key-daemon`.
-- Copies `ftdx10/ftdx10_keypad_full_config.yaml` to `config.yaml` only if it is missing.
+- Stores runtime config at `/home/pi/.config/radio-key-daemon/config.yaml`.
+- Migrates an existing `/home/pi/radio-key-daemon/config.yaml` to the runtime config path when the new config is missing.
+- Copies `ftdx10/ftdx10_keypad_full_config.yaml` to the runtime config path only if it is missing.
+- Preserves tracked local checkout changes with `git stash` before updating the repository.
 - Copies `ftdx10_cat.py` and `beacon.sh` to `/home/pi/radio`.
 - Installs and starts `radio-key-daemon.service`.
 - Installs and starts `rigctld.service`.
 - Starts the daemon with `--web --host 0.0.0.0 --port 8765 --allow-command-run`.
 
-The playbook does not overwrite an existing remote `config.yaml` unless you pass:
+The playbook does not overwrite an existing remote runtime config unless you pass:
 
 ```bash
 ansible-playbook -i ansible/inventory.yml ansible/deploy.yml \
   -e radio_key_daemon_overwrite_config=true
+```
+
+If you want the playbook to fail instead of stashing tracked local checkout
+changes, pass:
+
+```bash
+ansible-playbook -i ansible/inventory.yml ansible/deploy.yml \
+  -e radio_key_daemon_preserve_local_checkout_changes=false
 ```
 
 ## Useful Overrides
